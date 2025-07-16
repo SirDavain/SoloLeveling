@@ -40,7 +40,10 @@ import com.example.sololevelingapplication.ui.theme.SoloLevelingApplicationTheme
 import com.example.sololevelingapplication.questlogscreen.QuestLogScreen
 import androidx.navigation.compose.composable
 import com.example.sololevelingapplication.settingsScreen.SettingsScreen
+import dagger.hilt.android.AndroidEntryPoint
+import javax.inject.Inject
 
+@AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -52,8 +55,9 @@ class MainActivity : ComponentActivity() {
 
                 NavHost(
                     navController = navController,
-                    startDestination = NavRoutes.STAT_SCREEN,
+                    startDestination = "mainPager",
                 ) {
+                    composable("mainPager") { MainPagerScreen(navController) }
                     composable(NavRoutes.STAT_SCREEN) {
                         StatScreen(navController = navController)
                     }
@@ -66,16 +70,6 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
-    }
-}
-
-@Composable
-fun NavBar() {
-    Row(
-        modifier = Modifier,
-        horizontalArrangement = Arrangement.Center
-    ) {
-        //Icon(Icons.Rounded.Add)
     }
 }
 
@@ -110,12 +104,3 @@ fun InputField(
         }
     }
 }
-
-/*
-@Preview(showBackground = true)
-@Composable
-fun GreetingPreview() {
-    SoloLevelingApplicationTheme {
-
-    }
-}*/

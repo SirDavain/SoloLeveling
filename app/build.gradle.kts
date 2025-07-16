@@ -55,7 +55,16 @@ dependencies {
     implementation(libs.hilt.android)
     implementation(libs.androidx.navigation.compose)
     implementation(libs.hilt.navigation.compose)
-    ksp(libs.hilt.android.compiler)
+    implementation(libs.androidx.room.compiler) {
+        exclude(group = "com.intellij", module = "annotations")
+    }
+    implementation(libs.androidx.room.runtime)
+    implementation(libs.androidx.room.ktx) // For coroutines and Flow support
+    ksp(libs.androidx.room.compiler) // Use ksp for the Room compiler
+
+    // Hilt
+    implementation(libs.hilt.android)
+    ksp(libs.hilt.android.compiler) // Or annotationProcessor for Java
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
