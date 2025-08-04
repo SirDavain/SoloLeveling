@@ -4,12 +4,27 @@ import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import javax.inject.Inject
 
+data class StatsScreenUiState(
+    val strength: Int = 10,
+    val agility: Int = 10,
+    val intelligence: Int = 10,
+    val perception: Int = 10,
+    val vitality: Int = 10,
+    val isLoading: Boolean = false
+)
+
 @HiltViewModel
-class StatScreenViewModel @Inject constructor(
+class StatsViewModel @Inject constructor(
     //params
 ) : ViewModel() {
+
+    private val _uiState = MutableStateFlow(StatsScreenUiState())
+    val uiState: StateFlow<StatsScreenUiState> = _uiState
+
     // --- Character Info ---
     private val _characterName = mutableStateOf("David") // Initial default value
     val characterName: State<String> = _characterName

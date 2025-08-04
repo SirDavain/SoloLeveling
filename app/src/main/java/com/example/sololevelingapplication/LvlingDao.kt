@@ -10,17 +10,23 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface QuestDao {
-    @Query("SELECT * FROM quests")
+    @Query("SELECT * FROM quests ORDER BY category, text ASC")
     fun getAllQuests(): Flow<List<QuestEntity>>
 
-    @Query("SELECT * FROM quests WHERE type = :questType")
-    fun getQuestByType(questType: String): Flow<List<QuestEntity>>
+    @Query("SELECT * FROM quests WHERE id = :id")
+    suspend fun getQuestById(id: String): QuestEntity?
+
+    @Query("SELECT * FROM quests WHERE category = :questCategoryName")
+    fun getQuestByCategory(questCategoryName: String): Flow<List<QuestEntity>>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertQuest(quest: QuestEntity)
 
     @Update
     suspend fun updateQuest(quest: QuestEntity)
+
+    @Query("DELETE FROM quests WHERE id = :id")
+    suspend fun deleteQuestById(id: String)
 
     @Delete
     suspend fun deleteQuest(quest: QuestEntity)

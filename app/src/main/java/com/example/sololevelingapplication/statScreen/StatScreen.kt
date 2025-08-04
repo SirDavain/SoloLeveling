@@ -1,9 +1,5 @@
 package com.example.sololevelingapplication.statScreen
 
-import android.R.attr.fontWeight
-import android.R.attr.label
-import android.R.attr.text
-import android.widget.Space
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -11,55 +7,50 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
-import com.example.sololevelingapplication.InputField
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.width
-import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Snackbar
+import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.compose.rememberNavController
 import com.example.sololevelingapplication.ui.theme.SoloLevelingApplicationTheme
 import androidx.compose.runtime.getValue
-import androidx.compose.ui.res.fontResource
+import androidx.lifecycle.viewmodel.compose.viewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun StatScreen(
     navController: NavController,
-    viewModel: StatScreenViewModel = hiltViewModel() // Use hiltViewModel() for Hilt
+    statsViewModel: StatsViewModel = hiltViewModel()
 ) {
     // Use 'by' delegate for cleaner access
-    val characterName by viewModel.characterName
-    val characterJob by viewModel.characterJob
-    val characterLevel by viewModel.characterLevel
-    val characterTitle by viewModel.characterTitle
-    val strength by viewModel.strength
-    val agility by viewModel.agility
-    val perception by viewModel.perception
-    val vitality by viewModel.vitality
-    val intelligence by viewModel.intelligence
-    val availablePoints by viewModel.availablePoints
-    val isLoading by viewModel.isLoading
-    val errorMessage by viewModel.errorMessage
-    val levelProgress = viewModel.levelProgress
+    val characterName by statsViewModel.characterName
+    val characterJob by statsViewModel.characterJob
+    val characterLevel by statsViewModel.characterLevel
+    val characterTitle by statsViewModel.characterTitle
+    val strength by statsViewModel.strength
+    val agility by statsViewModel.agility
+    val perception by statsViewModel.perception
+    val vitality by statsViewModel.vitality
+    val intelligence by statsViewModel.intelligence
+    val availablePoints by statsViewModel.availablePoints
+    val isLoading by statsViewModel.isLoading
+    val errorMessage by statsViewModel.errorMessage
+    val levelProgress = statsViewModel.levelProgress
+
+    val uiState by statsViewModel.uiState.collectAsState()
 
     Box( // Use Box to easily show loading or error overlay
         modifier = Modifier
@@ -122,7 +113,7 @@ fun StatScreen(
                 }
                 Row () {
                     Text(
-                        text = "${viewModel.currentXp.value}/${viewModel.xpForLevelingUp.value}",
+                        text = "${statsViewModel.currentXp.value}/${statsViewModel.xpForLevelingUp.value}",
                         style = MaterialTheme.typography.bodySmall,
                         modifier = Modifier.padding(start = 8.dp)
                     )
@@ -217,13 +208,13 @@ fun StatItem(label: String, value: String, modifier: Modifier = Modifier) {
 @Preview
 @Composable
 fun StatScreenPreview() {
-    val previewViewModel = StatScreenViewModel().apply {
+    val previewViewModel = StatsViewModel().apply {
         //use default values
     }
     SoloLevelingApplicationTheme {
         StatScreen(
             navController = rememberNavController(),
-            viewModel = previewViewModel
+            statsViewModel = previewViewModel
         )
     }
 }
