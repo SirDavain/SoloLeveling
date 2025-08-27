@@ -4,7 +4,7 @@ import androidx.lifecycle.ViewModel
 import com.example.sololevelingapplication.QuestCategory
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.update
-import javax.inject.Inject
+import jakarta.inject.Inject
 
 @HiltViewModel
 class MainPagerScreenViewModel @Inject constructor(

@@ -1,19 +1,13 @@
 package com.example.sololevelingapplication
 
+import android.app.Application
 import android.content.Context
+import androidx.multidex.MultiDex
 import dagger.hilt.android.HiltAndroidApp
 import androidx.multidex.MultiDexApplication
-import androidx.multidex.MultiDex
-
-/*@HiltAndroidApp
-class SoloLevelingApplication : Application() {
-    override fun onCreate() {
-        super.onCreate()
-    }
-}*/
 
 @HiltAndroidApp
-class SoloLevelingApplication : MultiDexApplication() {
+class TheSYSTEM : Application() {
     override fun attachBaseContext(base: Context) {
         super.attachBaseContext(base)
         MultiDex.install(this)

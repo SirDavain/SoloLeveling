@@ -11,6 +11,8 @@ data class QuestEntity(
     @PrimaryKey val id: String = java.util.UUID.randomUUID().toString(), // a unique ID
     var text: String,
     var isDone: Boolean = false,
+    @ColumnInfo(defaultValue = "0")
+    var hasFailed: Boolean = false,
     var category: QuestCategory,
     var xpCategory: XpCategory?,
     @ColumnInfo(defaultValue = "0")

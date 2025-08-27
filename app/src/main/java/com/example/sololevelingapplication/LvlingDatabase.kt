@@ -12,7 +12,7 @@ import java.lang.ProcessBuilder.Redirect.to
 
 @Database(
     entities = [QuestEntity::class, UserStatsEntity::class],
-    version = 4,
+    version = 6,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
@@ -31,6 +31,18 @@ abstract class AppDatabase: RoomDatabase() {
                 db.execSQL("ALTER TABLE quests ADD COLUMN isCompleted INTEGER NOT NULL DEFAULT 0")
             }
         }
+        val MIGRATION_4_5 = object : Migration(4, 5) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE quests ADD COLUMN hasFailed INTEGER NOT NULL DEFAULT 0")
+            }
+        }
+
+        val MIGRATION_5_6 = object : Migration(5,6) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+
+            }
+        }
+
         @Volatile
         private var INSTANCE: AppDatabase? = null
 
@@ -41,7 +53,7 @@ abstract class AppDatabase: RoomDatabase() {
                     AppDatabase::class.java,
                     "solo_leveling_database" // database name
                 )
-                    .addMigrations(MIGRATION_2_3, MIGRATION_3_4)
+                    .addMigrations(MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
                     //.fallbackToDestructiveMigration()
                     .build()
                 INSTANCE = instance

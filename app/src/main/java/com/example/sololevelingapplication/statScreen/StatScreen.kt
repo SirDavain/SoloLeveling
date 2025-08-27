@@ -1,5 +1,6 @@
 package com.example.sololevelingapplication.statScreen
 
+import android.widget.Toast
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -17,9 +18,11 @@ import androidx.navigation.NavController
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.width
+import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
@@ -27,18 +30,25 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.compose.rememberNavController
 import com.example.sololevelingapplication.ui.theme.SoloLevelingApplicationTheme
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.runtime.setValue
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.sololevelingapplication.LevelUpOverlay
+import com.example.sololevelingapplication.Overlay
+import com.example.sololevelingapplication.OverlayViewModel
+import com.example.sololevelingapplication.animationOverlay.LevelUpAnimationOverlay
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun StatScreen(
     navController: NavController,
-    statsViewModel: StatsViewModel = hiltViewModel()
+    statsViewModel: StatsViewModel = viewModel(),
+    overlayViewModel: OverlayViewModel = viewModel()
 ) {
-    // Use 'by' delegate for cleaner access
     val characterName by statsViewModel.characterName
     val characterJob by statsViewModel.characterJob
-    val characterLevel by statsViewModel.characterLevel
     val characterTitle by statsViewModel.characterTitle
     val strength by statsViewModel.strength
     val agility by statsViewModel.agility
@@ -50,9 +60,16 @@ fun StatScreen(
     val errorMessage by statsViewModel.errorMessage
     val levelProgress = statsViewModel.levelProgress
 
+    val currentLevel by statsViewModel.characterLevel
+    var previousLevel by remember { mutableStateOf(currentLevel) }
+    var showLevelUpOverlay by remember { mutableStateOf(false) }
+    var levelUpOverlayInfo by remember { mutableStateOf<Overlay.LevelUp?>(null) }
+
     val uiState by statsViewModel.uiState.collectAsState()
 
-    Box( // Use Box to easily show loading or error overlay
+    val context = LocalContext.current
+
+    Box(
         modifier = Modifier
             .fillMaxSize()
             //.padding()
@@ -166,6 +183,40 @@ fun StatScreen(
                         //fontSize = 10.dp
                     )
                 }
+
+                Spacer(Modifier.height(10.dp))
+
+                Button(
+                    onClick = {
+                        Toast.makeText(context, "This is a toast", Toast.LENGTH_LONG).show()
+                    }
+                ) {
+                    Text("Show a toast")
+                }
+
+                Spacer(Modifier.height(10.dp))
+
+                Button(
+                    onClick = {
+                        val newLevelToShow = currentLevel
+
+                        levelUpOverlayInfo = Overlay.LevelUp(newLevelToShow, 1)
+                        showLevelUpOverlay = true
+                    }
+                ) {
+                    Text("Level Up Overlay")
+                }
+            }
+            if (showLevelUpOverlay && levelUpOverlayInfo != null) {
+                LevelUpAnimationOverlay(
+                    visible = true,
+                    info = levelUpOverlayInfo!!,
+                    onDismiss = {
+                        showLevelUpOverlay = false
+                        levelUpOverlayInfo = null
+                        overlayViewModel.dismiss()
+                    }
+                )
             }
         }
     }

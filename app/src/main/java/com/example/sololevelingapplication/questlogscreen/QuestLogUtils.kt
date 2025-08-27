@@ -1,9 +1,6 @@
 package com.example.sololevelingapplication.questlogscreen
 
-import android.R.attr.category
 import android.util.Log
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.forEach
 import androidx.compose.runtime.Composable
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -13,13 +10,10 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.RadioButtonDefaults
-import androidx.compose.material3.TextField
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.material3.Text
-import androidx.compose.ui.semantics.text
-import androidx.core.graphics.values
 import com.example.sololevelingapplication.QuestCategory
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
@@ -29,8 +23,6 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.focus.FocusRequester
@@ -42,9 +34,11 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.style.TextDecoration
-import androidx.compose.ui.unit.dp
 import com.example.sololevelingapplication.XpCategory
 import com.example.sololevelingapplication.questManagement.UiQuest
+import java.util.Locale
+import java.util.concurrent.TimeUnit
+import kotlinx.coroutines.delay
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -59,9 +53,43 @@ fun QuestListItem(
     val focusRequester = remember { FocusRequester() }
     val focusManager = LocalFocusManager.current
 
+    var timeLeftDisplay by remember(quest.timeOfCreation, quest.isDone) { mutableStateOf("") }
+
     LaunchedEffect(quest.isBeingEdited) {
         if (quest.isBeingEdited) {
             focusRequester.requestFocus()
+        }
+    }
+
+    LaunchedEffect(key1 = quest.timeOfCreation, key2 = quest.isDone, key3 = quest.category) {
+        if (!quest.isDone && (quest.category == QuestCategory.ONE_TIME || quest.category == QuestCategory.DAILY)) {
+            // For a duration of 24 hours:
+            val questDurationMillis = TimeUnit.HOURS.toMillis(24)
+
+            while (true) {
+                val currentTimeInMillis = System.currentTimeMillis()
+                val timeElapsedInMillis = currentTimeInMillis - quest.timeOfCreation
+                var remainingTimeInMillis = questDurationMillis - timeElapsedInMillis
+
+                if (remainingTimeInMillis <= 0) {
+                    timeLeftDisplay = "You failed!"
+                    break
+                }
+
+                // For formatting
+                val hours = TimeUnit.MILLISECONDS.toHours(remainingTimeInMillis)
+                remainingTimeInMillis -= TimeUnit.HOURS.toMillis(hours)
+                val minutes = TimeUnit.MILLISECONDS.toMinutes(remainingTimeInMillis)
+                remainingTimeInMillis -= TimeUnit.MINUTES.toMillis(minutes)
+                val seconds = TimeUnit.MILLISECONDS.toSeconds(remainingTimeInMillis)
+
+                timeLeftDisplay = String.format(Locale.getDefault(), "%02d:%02d:%02d", hours, minutes, seconds)
+                delay(1000) // wait for one second
+            }
+        } else if (quest.isDone) {
+            timeLeftDisplay = "Quest complete"
+        } else {
+            timeLeftDisplay = ""
         }
     }
 
@@ -73,7 +101,7 @@ fun QuestListItem(
                     // Could be used to navigate to a quest detail screen if you had one
                     // For now, perhaps toggle done status on simple click IF NOT editing.
                     if (!quest.isBeingEdited) {
-                        // onDoneChange(!quest.isDone) // Or let RadioButton handle it solely
+                        // onDoneChange(!quest.isDone) // RadioButton handles it
                     }
                 },
                 onLongClick = {
@@ -149,12 +177,16 @@ fun QuestListItem(
                 ),
                 modifier = Modifier.weight(1f)
             )
-            // Edit and Delete buttons when not in edit mode
-            IconButton(onClick = onToggleEdit) {
-                Icon(Icons.Filled.Edit, contentDescription = "Edit quest")
-            }
-            IconButton(onClick = onDelete) {
-                Icon(Icons.Filled.Delete, contentDescription = "Delete quest")
+
+            Spacer(Modifier.width(8.dp))
+
+            //Time left before quest fails
+            if (timeLeftDisplay.isNotBlank()) {
+                Text(
+                    text = timeLeftDisplay,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = if (timeLeftDisplay == "You failed!") MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
         }
     }
