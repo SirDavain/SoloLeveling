@@ -24,10 +24,13 @@ import androidx.compose.material3.DividerDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.graphics.Color
 import com.example.sololevelingapplication.OverlayViewModel
-import com.example.sololevelingapplication.QuestCategory
 import com.example.sololevelingapplication.questManagement.QuestManagementViewModel
+import com.example.sololevelingapplication.xpLogic.QuestCategory
+import androidx.compose.runtime.setValue
 
 // This is where the magic happens:
 // Displays your current "quests" (habits and routines you set yourself)
@@ -41,7 +44,9 @@ fun QuestLogScreen(
 ) {
     val uiState by questViewModel.uiState.collectAsState()
 
-    //var showQuestFailedOverlay by remember { mutableStateOf(false) }
+    var showDialog by remember { mutableStateOf(false) }
+    var newQuestTextState by rememberSaveable { mutableStateOf("") }
+    var selectedCategoryState by rememberSaveable { mutableStateOf(QuestCategory.ONE_TIME) }
 
     // Group quests by category
     val questsByCategory = remember(uiState.quests) {
@@ -72,7 +77,7 @@ fun QuestLogScreen(
                             )
                         }
                     } else {
-                        QuestCategory.entries.forEach { category -> // changed values() to entries
+                        QuestCategory.entries.forEach { category ->
                             val questsInCategory = questsByCategory[category]
                             if (!questsInCategory.isNullOrEmpty()) {
                                 item {
@@ -113,20 +118,17 @@ fun QuestLogScreen(
                 onTextChange = { questViewModel.newQuestText.value = it },
                 selectedCategory = questViewModel.newQuestCategory.value,
                 onCategoryChange = { questViewModel.newQuestCategory.value = it },
-                selectedTimeFrame = questViewModel.newQuestXpCategory.value,
-                onXpCategoryChange = { newXpCategory ->
-                    questViewModel.onNewQuestXpCategoryChanged(newXpCategory)
-                },
                 onDismiss = { questViewModel.onDismissAddQuestDialog() },
-                onConfirm = { questViewModel.onConfirmAddQuest() }
+                onConfirm = { text, category, hours, minutes ->
+                    questViewModel.newQuestText.value = ""
+                }
             )
         }
     }
 }
 
 // Helper to capitalize words for category titles
-fun String.capitalizeWords(): String = split(" ").joinToString(" ") { it.lowercase().capitalize() }
-
+fun String.capitalizeWords(): String = split(" ").joinToString(" ") { it.lowercase().replaceFirstChar(Char::titlecase) }
 
 @Composable
 fun QuestSectionTitle(title: String) {

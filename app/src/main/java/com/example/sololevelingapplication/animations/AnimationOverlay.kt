@@ -1,6 +1,5 @@
-package com.example.sololevelingapplication.animationOverlay
+package com.example.sololevelingapplication.animations
 
-import android.R.attr.level
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -15,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.wrapContentSize
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -26,7 +26,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.sololevelingapplication.Overlay
+import com.example.sololevelingapplication.OverlayViewModel
 
 @Composable
 fun LevelUpAnimationOverlay(
@@ -34,6 +36,7 @@ fun LevelUpAnimationOverlay(
     info: Overlay.LevelUp,
     onDismiss: () -> Unit
 ) {
+
     AnimatedVisibility(
         visible = visible,
         enter = fadeIn() + slideInVertically(initialOffsetY = { fullHeight -> -fullHeight }),
@@ -44,14 +47,24 @@ fun LevelUpAnimationOverlay(
                 .fillMaxSize()
                 .wrapContentSize(Alignment.Center)
                 .padding(16.dp)
-                .clickable(onClick = onDismiss)
+                .clickable(onClick = onDismiss),
+            contentAlignment = Alignment.Center
         ) {
+            ParticleBurstOverlay(isVisible = visible)
             Card(
                 shape = MaterialTheme.shapes.large,
+                modifier = Modifier
+                    .padding(16.dp)
+                    .animatedCardEdgeGlow(
+                        isVisible = visible,
+                        glowColor = MaterialTheme.colorScheme.primary,
+                        glowWidth = 30.dp,
+                        cornerRadius = 16.dp
+                ),
                 elevation = CardDefaults.cardElevation(defaultElevation = 10.dp),
                 colors = CardDefaults.cardColors(
                     containerColor = MaterialTheme.colorScheme.secondaryContainer
-                        .copy(alpha = 0.2f)
+                        .copy(alpha = 0.9f)
                 )
             ) {
                 Column(

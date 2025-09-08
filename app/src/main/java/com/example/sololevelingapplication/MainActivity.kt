@@ -1,7 +1,5 @@
 package com.example.sololevelingapplication
 
-import android.R.attr.visible
-import android.annotation.SuppressLint
 import com.example.sololevelingapplication.statScreen.StatScreen
 import android.os.Bundle
 import android.util.Log
@@ -39,13 +37,13 @@ import dagger.hilt.android.AndroidEntryPoint
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.sololevelingapplication.animationOverlay.LevelUpAnimationOverlay
-import com.example.sololevelingapplication.animationOverlay.QuestFailedAnimationOverlay
+import com.example.sololevelingapplication.animations.FullScreenEdgeLightingEffect
+import com.example.sololevelingapplication.animations.LevelUpAnimationOverlay
+import com.example.sololevelingapplication.animations.QuestFailedAnimationOverlay
 import com.example.sololevelingapplication.questManagement.QuestManagementViewModel
-import jakarta.inject.Inject
-import com.example.sololevelingapplication.OverlayViewModel
-import com.example.sololevelingapplication.animationOverlay.QuestCompletedAnimationOverlay
+import com.example.sololevelingapplication.animations.QuestCompletedAnimationOverlay
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
@@ -63,63 +61,63 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun TheSystem() {
 
-    val overlayViewModel: OverlayViewModel = viewModel()
-    val questManagementViewModel: QuestManagementViewModel = viewModel()
+    val overlayViewModel: OverlayViewModel = hiltViewModel()
+    val questManagementViewModel: QuestManagementViewModel = hiltViewModel()
+    val navController = rememberNavController()
+    val edgeLightState by overlayViewModel.edgeLightNotificationState.collectAsState()
 
     SoloLevelingApplicationTheme {
-        Surface(
-            modifier = Modifier.fillMaxSize(),
-            color = MaterialTheme.colorScheme.background
-        ) {
-
-            // val animationViewModel: AnimationViewModel = hiltViewModel()
-            val navController = rememberNavController()
-
-            /*val questFailedInfo by overlayCoordinator.questFailedOverlayInfo.collectAsState()
-            val questSuccessInfo by overlayCoordinator.questSuccessOverlayInfo.collectAsState()
-            val levelUpInfo by overlayCoordinator.levelUpOverlayInfo.collectAsState()*/
-
-            Box(
-                modifier = Modifier.fillMaxSize()
+        Box(modifier = Modifier.fillMaxSize()) {
+            FullScreenEdgeLightingEffect(
+                edgeLightState = edgeLightState,
+                pulseColor = MaterialTheme.colorScheme.secondary
+            )
+            Surface(
+                modifier = Modifier.fillMaxSize(),
+                color = MaterialTheme.colorScheme.background
             ) {
-                NavHost(
-                    navController = navController,
-                    startDestination = "mainPager",
+                Box(
+                    modifier = Modifier.fillMaxSize()
                 ) {
-                    composable("mainPager") { MainPagerScreen(navController) }
-                    composable(NavRoutes.STAT_SCREEN) {
-                        StatScreen(navController = navController)
-                    }
-                    composable(NavRoutes.QUEST_LOG_SCREEN) {
-                        QuestLogScreen(navController = navController)
-                    }
-                    composable(NavRoutes.SETTINGS_SCREEN) {
-                        SettingsScreen(navController = navController)
+                    NavHost(
+                        navController = navController,
+                        startDestination = "mainPager",
+                    ) {
+                        composable("mainPager") { MainPagerScreen(navController) }
+                        composable(NavRoutes.STAT_SCREEN) {
+                            StatScreen(navController = navController)
+                        }
+                        composable(NavRoutes.QUEST_LOG_SCREEN) {
+                            QuestLogScreen(navController = navController)
+                        }
+                        composable(NavRoutes.SETTINGS_SCREEN) {
+                            SettingsScreen(navController = navController)
+                        }
                     }
                 }
-            }
-            questManagementViewModel.CheckAndFailOverdueQuests(overlayViewModel)
+                questManagementViewModel.CheckAndFailOverdueQuests(overlayViewModel)
 
-            // --- Display Overlays ---
+                // --- Display Overlays ---
 
-            val currentOverlay by overlayViewModel.currentOverlay
-            when (val overlay = currentOverlay) {
-                is Overlay.QuestFailed -> QuestFailedAnimationOverlay(
-                    visible = true,
-                    info = Overlay.QuestFailed(overlay.questText, -42),
-                    onDismiss = { overlayViewModel.dismiss() }
-                )
-                is Overlay.LevelUp -> LevelUpAnimationOverlay(
-                    visible = true,
-                    info = Overlay.LevelUp(3, 1),
-                    onDismiss = { overlayViewModel.dismiss() }
-                )
-                is Overlay.QuestCompleted -> QuestCompletedAnimationOverlay(
-                    visible = true,
-                    info = Overlay.QuestCompleted(overlay.questText, 42),
-                    onDismiss = { overlayViewModel.dismiss() }
-                )
-                Overlay.None -> { }
+                val currentOverlay by overlayViewModel.currentOverlay
+                when (val overlay = currentOverlay) {
+                    is Overlay.QuestFailed -> QuestFailedAnimationOverlay(
+                        visible = true,
+                        info = Overlay.QuestFailed(overlay.questText, -42),
+                        onDismiss = { overlayViewModel.dismiss() }
+                    )
+                    is Overlay.LevelUp -> LevelUpAnimationOverlay(
+                        visible = true,
+                        info = Overlay.LevelUp(3, 1),
+                        onDismiss = { overlayViewModel.dismiss() }
+                    )
+                    is Overlay.QuestCompleted -> QuestCompletedAnimationOverlay(
+                        visible = true,
+                        info = Overlay.QuestCompleted(overlay.questText, 42),
+                        onDismiss = { overlayViewModel.dismiss() }
+                    )
+                    Overlay.None -> { }
+                }
             }
         }
     }

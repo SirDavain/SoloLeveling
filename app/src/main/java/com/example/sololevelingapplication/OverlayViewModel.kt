@@ -26,6 +26,12 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.material3.Text
 import androidx.compose.material3.Button
 import androidx.compose.runtime.State
+import androidx.lifecycle.viewModelScope
+import com.example.sololevelingapplication.animations.EdgeLightState
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
 
 sealed class Overlay {
     data object None : Overlay()
@@ -48,38 +54,21 @@ class OverlayViewModel @Inject constructor() : ViewModel() {
     private val _currentOverlay = mutableStateOf<Overlay>(Overlay.None)
     val currentOverlay: State<Overlay> = _currentOverlay
 
+    private val _edgeLightNotificationState = MutableStateFlow(EdgeLightState.Idle)
+    val edgeLightNotificationState = _edgeLightNotificationState.asStateFlow()
+
     fun show(overlay: Overlay) {
         _currentOverlay.value = overlay
     }
     fun dismiss() {
         _currentOverlay.value = Overlay.None
     }
-}
 
-@Composable
-fun LevelUpOverlay(onDismiss: () -> Unit) {
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color(0xAA000000)) // translucent background
-            .clickable { onDismiss() },
-        contentAlignment = Alignment.Center
-    ) {
-        Card(
-            modifier = Modifier.padding(32.dp),
-            shape = RoundedCornerShape(16.dp),
-            elevation = CardDefaults.cardElevation(8.dp)
-        ) {
-            Column(
-                modifier = Modifier.padding(24.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Text("🎉 Level Up!", style = MaterialTheme.typography.headlineMedium)
-                Spacer(Modifier.height(8.dp))
-                Button(onClick = onDismiss) {
-                    Text("Awesome!")
-                }
-            }
+    fun triggerEdgeLighting() {
+        viewModelScope.launch {
+            _edgeLightNotificationState.value = EdgeLightState.Pulsing
+            delay(3000L)
+            _edgeLightNotificationState.value = EdgeLightState.Idle
         }
     }
 }

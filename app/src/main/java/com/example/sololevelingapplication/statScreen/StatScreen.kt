@@ -22,11 +22,9 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.compose.rememberNavController
 import com.example.sololevelingapplication.ui.theme.SoloLevelingApplicationTheme
 import androidx.compose.runtime.getValue
@@ -35,10 +33,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.sololevelingapplication.LevelUpOverlay
 import com.example.sololevelingapplication.Overlay
 import com.example.sololevelingapplication.OverlayViewModel
-import com.example.sololevelingapplication.animationOverlay.LevelUpAnimationOverlay
+import com.example.sololevelingapplication.animations.LevelUpAnimationOverlay
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -199,7 +196,6 @@ fun StatScreen(
                 Button(
                     onClick = {
                         val newLevelToShow = currentLevel
-
                         levelUpOverlayInfo = Overlay.LevelUp(newLevelToShow, 1)
                         showLevelUpOverlay = true
                     }
@@ -217,6 +213,7 @@ fun StatScreen(
                         overlayViewModel.dismiss()
                     }
                 )
+                overlayViewModel.triggerEdgeLighting()
             }
         }
     }

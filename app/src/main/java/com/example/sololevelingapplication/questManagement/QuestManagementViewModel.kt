@@ -11,10 +11,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.sololevelingapplication.OverlayViewModel
-import com.example.sololevelingapplication.QuestCategory
 import com.example.sololevelingapplication.QuestDao
 import com.example.sololevelingapplication.QuestEntity
-import com.example.sololevelingapplication.XpCategory
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -28,6 +26,7 @@ import java.util.Locale
 import com.example.sololevelingapplication.Overlay
 import kotlinx.coroutines.isActive
 import androidx.compose.runtime.getValue
+import com.example.sololevelingapplication.xpLogic.QuestCategory
 import kotlinx.coroutines.delay
 
 data class UiQuest(
@@ -36,7 +35,7 @@ data class UiQuest(
     var isDone: Boolean,
     val category: QuestCategory,
     var hasFailed: Boolean,
-    val xpCategory: XpCategory?,
+    var xp: Int,
     var isBeingEdited: Boolean = false,
     val timeOfCreation: Long
 )
@@ -48,7 +47,7 @@ fun QuestEntity.toUiQuest(): UiQuest {
         isDone = isDone,
         category = category,
         hasFailed = hasFailed,
-        xpCategory = this.xpCategory,
+        xp = 0,
         timeOfCreation = timeOfCreation
     )
 }
@@ -60,7 +59,7 @@ fun UiQuest.toQuestEntity(): QuestEntity {
         isDone = isDone,
         category = category,
         hasFailed = hasFailed,
-        xpCategory = this.xpCategory,
+        xp = 0,
         timeOfCreation = timeOfCreation
     )
 }
@@ -84,7 +83,6 @@ class QuestManagementViewModel @Inject constructor(
     // For the add quest dialog
     val newQuestText = mutableStateOf("")
     val newQuestCategory = mutableStateOf(QuestCategory.ONE_TIME) // Default category
-    val newQuestXpCategory = mutableStateOf<XpCategory>(XpCategory.HALF_HOUR_OR_LESS) // Default category
 
     init {
         loadQuests()
@@ -115,8 +113,8 @@ class QuestManagementViewModel @Inject constructor(
         _uiState.update { it.copy(showAddQuestDialog = false) }
     }
 
-    fun onNewQuestXpCategoryChanged(xpCategory: XpCategory) {
-        newQuestXpCategory.value = xpCategory
+    fun onNewQuestCategoryChanged(questCategory: QuestCategory) {
+        newQuestCategory.value = questCategory
     }
 
     fun onConfirmAddQuest() {
@@ -127,7 +125,7 @@ class QuestManagementViewModel @Inject constructor(
             val newQuestEntity = QuestEntity(
                 text = newQuestText.value,
                 category = newQuestCategory.value,
-                xpCategory = newQuestXpCategory.value,
+                xp = 0,
                 timeOfCreation = currentTime
             )
             viewModelScope.launch {
@@ -203,10 +201,10 @@ class QuestManagementViewModel @Inject constructor(
         }
     }
 
-    val selectedXpCategoryForDialog = mutableStateOf<XpCategory>(XpCategory.HALF_HOUR_OR_LESS)
+    val selectedQuestCategoryForDialog = mutableStateOf<QuestCategory>(QuestCategory.ONE_TIME)
 
-    fun updateSelectedXpCategory(newCategory: XpCategory) {
-        selectedXpCategoryForDialog.value = newCategory
+    fun updateSelectedQuestCategory(newCategory: QuestCategory) {
+        selectedQuestCategoryForDialog.value = newCategory
     }
 
     /*fun completeQuest(quest: UiQuest) {
@@ -218,39 +216,7 @@ class QuestManagementViewModel @Inject constructor(
                 QuestSuccessOverlayInfo(questText = quest.text, receivedXp = rewards)
             )
         }
-    }
-
-    fun failQuest(quest: UiQuest) {
-        viewModelScope.launch {
-            val penalty = -42
-            questDao.updateQuest(quest.copy(isDone = false, hasFailed = true).toQuestEntity())
-
-            overlayCoordinator.showQuestFailedOverlay(
-                QuestFailedOverlayInfo(questText = quest.text, penaltyXp = penalty)
-            )
-        }
-    }*/
-
-    /*fun checkAndFailOverdueQuests() {
-        viewModelScope.launch {
-            val allQuests = uiState.value.quests
-            val currentTime = System.currentTimeMillis()
-
-            allQuests.filter { !it.isDone && !it.hasFailed }.forEach { quest ->
-                val duration = getQuestDurationMillis(quest.category, quest.xpCategory)
-                if (duration > 0 && (currentTime - quest.timeOfCreation) > duration) {
-                    val penalty = determinePenaltyFor(quest)
-                    val updatedQuest = quest.copy(hasFailed = true)
-                    questDao.updateQuest(updatedQuest.toQuestEntity())
-
-                    // Replace with new OverlayViewModel
-                    overlayCoordinator.showQuestFailedOverlay(
-                        QuestFailedOverlayInfo(updatedQuest.text, penaltyXp = penalty)
-                    )
-                }
-            }
-        }
-    }*/
+    } */
 
     @Composable
     fun CheckAndFailOverdueQuests(
@@ -264,13 +230,15 @@ class QuestManagementViewModel @Inject constructor(
                 Log.d("OverDueCheck", "Checking for overdue quests.")
                 val currentTime = System.currentTimeMillis()
                 currentQuests.filter { !it.isDone && !it.hasFailed }.forEach { quest ->
-                    val duration = getQuestDurationMillis(quest.category, quest.xpCategory)
+                    // need to update duration
+                    val duration = 1 // getQuestDurationMillis(quest.category)
                     if (duration > 0 && (currentTime - quest.timeOfCreation) > duration) {
-                        val penalty = determinePenaltyFor(quest)
+                        val penalty = quest.xp / 2
                         val updatedQuest = quest.copy(hasFailed = true)
                         updateQuestInDB(updatedQuest.toQuestEntity())
 
                         overlayViewModel.show(Overlay.QuestFailed(updatedQuest.text, penalty))
+                        // actually subtract the lost XP
                     }
                 }
                 delay(60000L)
@@ -284,7 +252,7 @@ class QuestManagementViewModel @Inject constructor(
         }
     }
 
-    private fun getQuestDurationMillis(category: QuestCategory, xpCategory: XpCategory?): Long {
+    /*private fun getQuestDurationMillis(category: QuestCategory): Long {
         return when (category) {
             QuestCategory.DAILY -> java.util.concurrent.TimeUnit.HOURS.toMillis(24)
             QuestCategory.ONE_TIME -> {
@@ -299,8 +267,9 @@ class QuestManagementViewModel @Inject constructor(
             }
             else -> 0L // No duration for REPEATABLE or if undefined
         }
-    }
-    private fun determinePenaltyFor(quest: UiQuest): Int {
+    }*/
+    //deprecated: penalty will just be half the xp to be gained
+    /* private fun determinePenaltyFor(quest: UiQuest): Int {
         return when (quest.xpCategory) {
             XpCategory.HALF_HOUR_OR_LESS -> 10
             XpCategory.HOUR_OR_LESS -> 25
@@ -308,5 +277,5 @@ class QuestManagementViewModel @Inject constructor(
             XpCategory.THREE_HOURS_OR_LESS -> 100
             else -> 150
         }
-    }
+    } */
 }

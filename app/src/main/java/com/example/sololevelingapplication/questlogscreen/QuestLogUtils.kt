@@ -1,6 +1,12 @@
 package com.example.sololevelingapplication.questlogscreen
 
+import android.R.attr.category
+import android.R.attr.enabled
+import android.R.attr.label
+import android.graphics.Outline
 import android.util.Log
+import android.util.Log.i
+import android.widget.Space
 import androidx.compose.runtime.Composable
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -14,7 +20,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.material3.Text
-import com.example.sololevelingapplication.QuestCategory
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
@@ -25,6 +30,7 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.input.key.Key
@@ -34,8 +40,11 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.style.TextDecoration
-import com.example.sololevelingapplication.XpCategory
+import androidx.core.graphics.values
+import com.example.sololevelingapplication.QuestDurationInput
+import com.example.sololevelingapplication.generalUtils.QuestDurationWheelPicker
 import com.example.sololevelingapplication.questManagement.UiQuest
+import com.example.sololevelingapplication.xpLogic.QuestCategory
 import java.util.Locale
 import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.delay
@@ -198,11 +207,14 @@ fun AddQuestDialog(
     onTextChange: (String) -> Unit,
     selectedCategory: QuestCategory,
     onCategoryChange: (QuestCategory) -> Unit,
-    selectedTimeFrame: XpCategory,
-    onXpCategoryChange: (XpCategory) -> Unit,
     onDismiss: () -> Unit,
-    onConfirm: () -> Unit
+    onConfirm: (questText: String, category: QuestCategory, hours: Int, minutes: Int) -> Unit
 ) {
+    var questHours by rememberSaveable { mutableStateOf(0) }
+    var questMinutes by rememberSaveable { mutableStateOf(0) }
+
+    var showDurationPicker by rememberSaveable { mutableStateOf(true) }
+
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Add New Quest") },
@@ -230,26 +242,42 @@ fun AddQuestDialog(
                 Spacer(Modifier.height(16.dp))
 
                 // add option to select time frame for one-time quests
-                Text("Time Frame:", style = MaterialTheme.typography.labelMedium)
+                Text("Quest Duration:", style = MaterialTheme.typography.labelMedium)
 
-                XpCategory.entries.forEach { timeFrame ->
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        RadioButton(
-                            selected = timeFrame == selectedTimeFrame,
-                            onClick = {
-                                onXpCategoryChange(timeFrame)
-                                Log.d("timeFrame", "TimeFrame is $timeFrame")
-                            }
-                        )
-                        Text(timeFrame.name.replace("_", " ").capitalizeWords())
-                    }
+                Button(onClick = { showDurationPicker = !showDurationPicker }) {
+                    Text(if (showDurationPicker) "Hide duration picker" else "Set quest duration")
+                }
+                if (showDurationPicker) {
+                    Spacer(Modifier.height(8.dp))
+                    QuestDurationWheelPicker(
+                        initialHours = questHours,
+                        initialMinutes = questMinutes,
+                        onDurationChange = { hours, minutes ->
+                            questHours = hours
+                            questMinutes = minutes
+                        }
+                    )
+                } else {
+                    Text("Duration: ${String.format("%02d", questHours)}h ${String.format("%02d", questMinutes)}m")
                 }
             }
         },
         confirmButton = {
-            Button(onClick = onConfirm, enabled = newQuestText.isNotBlank()) {
+            Button(
+                onClick = {
+                    // Pass all data, including duration, back
+                    onConfirm(newQuestText, selectedCategory, questHours, questMinutes)
+                    Log.d("AddQuestDialog", "Confirming with duration: ${questHours}h ${questMinutes}m")
+                },
+                enabled = newQuestText.isNotBlank()
+            ) {
                 Text("Add")
             }
+            Log.d("ConfirmAddQuest", "Saving quest with duration: ${questHours}h ${questMinutes}m")
+            /*if (questHours > 0) {
+                var totalMinutes = questHours * 60 + questMinutes
+                quest.
+            }*/
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
@@ -257,4 +285,62 @@ fun AddQuestDialog(
             }
         }
     )
+}
+
+interface AppLogger {
+    fun d(tag: String, message: String)
+}
+
+fun getAllQuestCategoryNames(): List<String> {
+    return QuestCategory.entries.map { it.name }
+}
+
+fun getAllQuestCategoryDisplayNames(): List<String> {
+    return QuestCategory.entries.map { it.category }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun QuestCategoryDropdown(
+    modifier: Modifier = Modifier,
+    label: String = "Quest Category",
+    options: List<String> = getAllQuestCategoryDisplayNames(),
+    selectedOption: String = "One-time Quest",
+    onOptionSelected: () -> Unit
+) {
+    var isExpanded by remember { mutableStateOf(false) }
+
+    ExposedDropdownMenuBox(
+        expanded = isExpanded,
+        onExpandedChange = { isExpanded = !isExpanded },
+        modifier = modifier
+    ) {
+        OutlinedTextField(
+            //value = selectedOption?.displayName ?: "",
+            value = selectedOption,
+            onValueChange = {},
+            readOnly = true,
+            label = { Text(label) },
+            trailingIcon = {
+                ExposedDropdownMenuDefaults.TrailingIcon(expanded = isExpanded)
+            },
+            modifier = Modifier
+                .menuAnchor()
+                .fillMaxWidth()
+        )
+        ExposedDropdownMenu(
+            expanded = isExpanded,
+            onDismissRequest = { isExpanded = false }
+        ) {
+            options.forEach { option ->
+                DropdownMenuItem(
+                    text = { Text(option) },
+                    onClick = {
+                        //onOptionSelected(option)
+                        isExpanded = false
+                    }
+                )
+            }
+        }
+    }
 }

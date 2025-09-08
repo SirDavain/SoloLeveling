@@ -4,6 +4,7 @@ import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 import androidx.room.TypeConverters
+import com.example.sololevelingapplication.xpLogic.QuestCategory
 
 @Entity(tableName = "quests")
 @TypeConverters(Converters::class)
@@ -14,7 +15,8 @@ data class QuestEntity(
     @ColumnInfo(defaultValue = "0")
     var hasFailed: Boolean = false,
     var category: QuestCategory,
-    var xpCategory: XpCategory?,
+    @ColumnInfo(defaultValue = "0")
+    var xp: Int,
     @ColumnInfo(defaultValue = "0")
     val timeOfCreation: Long
 )

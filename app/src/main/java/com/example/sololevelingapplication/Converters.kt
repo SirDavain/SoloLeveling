@@ -1,6 +1,7 @@
 package com.example.sololevelingapplication
 
 import androidx.room.TypeConverter
+import com.example.sololevelingapplication.xpLogic.QuestCategory
 
 class Converters {
     /*@TypeConverter
@@ -29,7 +30,7 @@ class Converters {
         }
     }*/
 
-    @TypeConverter
+    /*@TypeConverter
     fun fromXpCategory(xpCategory: XpCategory): String {
         return xpCategory.name
     }
@@ -45,7 +46,7 @@ class Converters {
                 null
             }
         }
-    }
+    }*/
 
     @TypeConverter
     fun fromQuestCategory(questCategory: QuestCategory?): String? {
