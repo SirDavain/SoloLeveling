@@ -1,5 +1,5 @@
-import com.example.sololevelingapplication.questlogscreen.XpCategory
-import com.example.sololevelingapplication.questlogscreen.getXpInfo
+import com.example.thesystem.questlogscreen.XpCategory
+import com.example.thesystem.questlogscreen.getXpInfo
 import org.junit.Assert
 import org.junit.Test
 

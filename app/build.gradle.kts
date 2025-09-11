@@ -7,7 +7,7 @@ plugins {
 }
 
 android {
-    namespace = "com.example.sololevelingapplication"
+    namespace = "com.example.thesystem"
     compileSdk = 36
 
     defaultConfig {
