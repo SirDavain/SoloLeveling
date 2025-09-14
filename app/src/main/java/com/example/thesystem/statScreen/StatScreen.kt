@@ -1,5 +1,7 @@
 package com.example.thesystem.statScreen
 
+import android.annotation.SuppressLint
+import android.widget.Space
 import android.widget.Toast
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -32,37 +34,32 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.runtime.setValue
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.thesystem.Overlay
 import com.example.thesystem.OverlayViewModel
 import com.example.thesystem.animations.LevelUpAnimationOverlay
+import com.example.thesystem.questManagement.QuestManagementViewModel
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun StatScreen(
     navController: NavController,
+    questViewModel: QuestManagementViewModel = viewModel(),
     statsViewModel: StatsViewModel = viewModel(),
     overlayViewModel: OverlayViewModel = viewModel()
 ) {
-    val characterName by statsViewModel.characterName
-    val characterJob by statsViewModel.characterJob
-    val characterTitle by statsViewModel.characterTitle
-    val strength by statsViewModel.strength
-    val agility by statsViewModel.agility
-    val perception by statsViewModel.perception
-    val vitality by statsViewModel.vitality
-    val intelligence by statsViewModel.intelligence
-    val availablePoints by statsViewModel.availablePoints
-    val isLoading by statsViewModel.isLoading
-    val errorMessage by statsViewModel.errorMessage
     val levelProgress = statsViewModel.levelProgress
 
-    val currentLevel by statsViewModel.characterLevel
-    var previousLevel by remember { mutableStateOf(currentLevel) }
     var showLevelUpOverlay by remember { mutableStateOf(false) }
     var levelUpOverlayInfo by remember { mutableStateOf<Overlay.LevelUp?>(null) }
 
-    val uiState by statsViewModel.uiState.collectAsState()
+    val statsUiState by statsViewModel.uiState.collectAsStateWithLifecycle()
+
+    //val uiState by questViewModel.uiState.collectAsState()
 
     val context = LocalContext.current
 
@@ -71,7 +68,7 @@ fun StatScreen(
             .fillMaxSize()
             //.padding()
     ) {
-        if (isLoading) {
+        if (statsUiState.isLoading) {
             CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
         } else {
             Column(
@@ -106,8 +103,8 @@ fun StatScreen(
                         }
                     }
                     Column {
-                        StatRow(label = "Job", value = characterJob)
-                        StatRow(label = "Title", value = characterTitle)
+                        StatRow(label = "Job", value = statsUiState.stats?.job)
+                        StatRow(label = "Title", value = statsUiState.stats?.title)
                     }
                 }
 
@@ -125,9 +122,11 @@ fun StatScreen(
                         trackColor = */
                     )
                 }
+
+                // Level Progress value
                 Row () {
                     Text(
-                        text = "${statsViewModel.currentXp.value}/${statsViewModel.xpForLevelingUp.value}",
+                        text = "${statsUiState.stats?.currentXp}/${statsUiState.stats?.xpToNextLevel}",
                         style = MaterialTheme.typography.bodySmall,
                         modifier = Modifier.padding(start = 8.dp)
                     )
@@ -139,17 +138,17 @@ fun StatScreen(
                     horizontalArrangement = Arrangement.Absolute.SpaceEvenly
                 ) {
                     Column(horizontalAlignment = Alignment.Start, modifier = Modifier.weight(1f)) {
-                        StatItem(label = "STR", value = strength.toString())
+                        StatItem(label = "STR", value = statsUiState.stats?.strength.toString())
                         // Example: Button to increase STR
                         /*Button(onClick = { viewModel.spendPointOnStrength() },
                             enabled = availablePoints > 0 // Disable if no points
                         ) { Text("+") }*/
-                        StatItem(label = "PER", value = perception.toString())
-                        StatItem(label = "INT", value = intelligence.toString())
+                        StatItem(label = "PER", value = statsUiState.stats?.perception.toString())
+                        StatItem(label = "INT", value = statsUiState.stats?.intelligence.toString())
                     }
                     Column(horizontalAlignment = Alignment.Start, modifier = Modifier.weight(1f)) {
-                        StatItem(label = "AGI", value = agility.toString())
-                        StatItem(label = "VIT", value = vitality.toString())
+                        StatItem(label = "AGI", value = statsUiState.stats?.agility.toString())
+                        StatItem(label = "VIT", value = statsUiState.stats?.vitality.toString())
                     }
                 }
 
@@ -169,13 +168,8 @@ fun StatScreen(
                         Text("Ability")
                         Text("Points")
                     }
-                    /*Text(
-                        text = "Available\nAbility\nPoints",
-                        style = MaterialTheme.typography.bodySmall,
-                        textAlign = TextAlign.Start
-                    )*/
                     Text(
-                        text = availablePoints.toString(),
+                        text = (statsUiState.stats?.availablePoints ?: 0).toString(),
                         style = MaterialTheme.typography.headlineLarge,
                         //fontSize = 10.dp
                     )
@@ -183,6 +177,7 @@ fun StatScreen(
 
                 Spacer(Modifier.height(10.dp))
 
+                // Toast test
                 Button(
                     onClick = {
                         Toast.makeText(context, "This is a toast", Toast.LENGTH_LONG).show()
@@ -193,14 +188,38 @@ fun StatScreen(
 
                 Spacer(Modifier.height(10.dp))
 
+                // Level Up Overlay test
                 Button(
                     onClick = {
-                        val newLevelToShow = currentLevel
-                        levelUpOverlayInfo = Overlay.LevelUp(newLevelToShow, 1)
+                        val newLevelToShow = statsUiState.stats?.level
+                        levelUpOverlayInfo = Overlay.LevelUp(newLevelToShow!!, 1)
                         showLevelUpOverlay = true
                     }
                 ) {
                     Text("Level Up Overlay")
+                }
+
+                Spacer(Modifier.height(10.dp))
+
+                // Simulate spending points
+                Button(
+                    onClick = {
+                        statsViewModel.spendAbilityPoints(1, "strength")
+                    },
+                    enabled = (statsUiState.stats?.availablePoints ?: 0) > 0,
+                ) {
+                    Text("Increase strength")
+                }
+
+                Spacer(Modifier.height(10.dp))
+
+                // Increase ability points
+                Button(
+                    onClick = {
+                        statsViewModel.addAbilityPoints()
+                    }
+                ) {
+                    Text("Add points")
                 }
             }
             if (showLevelUpOverlay && levelUpOverlayInfo != null) {
@@ -221,14 +240,14 @@ fun StatScreen(
 
 // Reusable composable for a label-value pair in the first section
 @Composable
-fun StatRow(label: String, value: String) {
+fun StatRow(label: String, value: String?) {
     Row(verticalAlignment = Alignment.CenterVertically) {
         Text(
             text = "$label: ",
             style = MaterialTheme.typography.titleSmall,
             fontWeight = FontWeight.Bold
         )
-        Text(text = value, style = MaterialTheme.typography.bodyMedium)
+        Text(text = value.toString(), style = MaterialTheme.typography.bodyMedium)
     }
     Spacer(modifier = Modifier.height(4.dp)) // Small space between these stat rows
 }
@@ -253,9 +272,12 @@ fun StatItem(label: String, value: String, modifier: Modifier = Modifier) {
     }
 }
 
+/*
+@SuppressLint("ViewModelConstructorInComposable")
 @Preview
 @Composable
 fun StatScreenPreview() {
+
     val previewViewModel = StatsViewModel().apply {
         //use default values
     }
@@ -265,4 +287,4 @@ fun StatScreenPreview() {
             statsViewModel = previewViewModel
         )
     }
-}
+}*/

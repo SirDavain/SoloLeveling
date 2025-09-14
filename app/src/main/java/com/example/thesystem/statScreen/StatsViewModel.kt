@@ -1,120 +1,150 @@
 package com.example.thesystem.statScreen
 
+import android.util.Log
+import android.util.Log.e
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.State
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.example.thesystem.QuestDao
+import com.example.thesystem.UserStatsDao
+import com.example.thesystem.UserStatsEntity
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import jakarta.inject.Inject
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 
 data class StatsScreenUiState(
-    val strength: Int = 10,
-    val agility: Int = 10,
-    val intelligence: Int = 10,
-    val perception: Int = 10,
-    val vitality: Int = 10,
-    val isLoading: Boolean = false
+    val stats: UserStatsEntity? = null,
+    val isLoading: Boolean = true,
+    val errorMessage: String? = null
 )
 
 @HiltViewModel
 class StatsViewModel @Inject constructor(
-    //params
+    private val userStatsDao: UserStatsDao
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(StatsScreenUiState())
-    val uiState: StateFlow<StatsScreenUiState> = _uiState
-
-    // --- Character Info ---
-    private val _characterName = mutableStateOf("David") // Initial default value
-    val characterName: State<String> = _characterName
-
-    private val _currentXp = mutableStateOf(55)
-    val currentXp: State<Int> = _currentXp
-
-    private val _xpForLevelingUp = mutableStateOf(100)
-    val xpForLevelingUp: State<Int> = _xpForLevelingUp
+    val uiState: StateFlow<StatsScreenUiState> = _uiState.asStateFlow()
 
     val levelProgress: Float
         get() {
-            return if (_xpForLevelingUp.value > 0) {
-                (_currentXp.value.toFloat() / _xpForLevelingUp.value.toFloat()).coerceIn(0f, 1f)
+            val stats = _uiState.value.stats
+            return if (stats != null && stats.xpToNextLevel > 0) {
+                (stats.currentXp.toFloat() / stats.xpToNextLevel.toFloat()).coerceIn(0f, 1f)
             } else {
                 0f
             }
         }
 
-    private val _characterJob = mutableStateOf("Personal Trainer")
-    val characterJob: State<String> = _characterJob
-
-    private val _characterLevel = mutableStateOf(100)
-    val characterLevel: State<Int> = _characterLevel
-
-    private val _characterTitle = mutableStateOf("The One Who Overcame Adversity")
-    val characterTitle: State<String> = _characterTitle
-
-    // --- Core Stats ---
-    private val _strength = mutableStateOf(555)
-    val strength: State<Int> = _strength
-
-    private val _agility = mutableStateOf(555)
-    val agility: State<Int> = _agility
-
-    private val _perception = mutableStateOf(555)
-    val perception: State<Int> = _perception
-
-    private val _vitality = mutableStateOf(555)
-    val vitality: State<Int> = _vitality
-
-    private val _intelligence = mutableStateOf(555)
-    val intelligence: State<Int> = _intelligence
-
-    // --- Ability Points ---
-    private val _availablePoints = mutableStateOf(5)
-    val availablePoints: State<Int> = _availablePoints
-
-    // --- Other potential states ---
-    private val _isLoading = mutableStateOf(false)
-    val isLoading: State<Boolean> = _isLoading
-
-    private val _errorMessage = mutableStateOf<String?>(null)
-    val errorMessage: State<String?> = _errorMessage
-
     init {
         //load initial data here
+        loadCharacterStats()
     }
 
-    // Example function to load data (if it's not hardcoded)
     private fun loadCharacterStats() {
-        _isLoading.value = true
-        // viewModelScope.launch {
-        //     try {
-        //         val stats = characterRepository.getCharacterStats() // Assuming repository call
-        //         _characterName.value = stats.name
-        //         _characterJob.value = stats.job
-        //         _characterLevel.value = stats.level
-        //         // ... update other states
-        //         _errorMessage.value = null
-        //     } catch (e: Exception) {
-        //         _errorMessage.value = "Failed to load stats: ${e.message}"
-        //     } finally {
-        //         _isLoading.value = false
-        //     }
-        // }
+        viewModelScope.launch {
+            val statsExist = userStatsDao.getUserStats().first() != null
+            if (!statsExist)
+                userStatsDao.saveUserStats(createDefaultStats())
+
+            userStatsDao.getUserStats().collect() { stats ->
+                _uiState.update { currentState ->
+                    currentState.copy(
+                        stats = stats,
+                        isLoading = false
+                    )
+                }
+            }
+        }
     }
 
-    // Example function to update a stat (e.g., if user can spend points)
-    fun spendPointOnStrength(pointsToSpend: Int = 1) {
-        if (_availablePoints.value >= pointsToSpend) {
-            _strength.value += pointsToSpend
-            _availablePoints.value -= pointsToSpend
-        } else {
-            // Handle error: not enough points
-            _errorMessage.value = "Not enough available points!"
+    private fun createDefaultStats(): UserStatsEntity {
+        return UserStatsEntity(
+            level = 1,
+            currentXp = 0,
+            xpToNextLevel = 100,
+            availablePoints = 5, // Start with some points
+            strength = 10,
+            agility = 10,
+            vitality = 10,
+            intelligence = 10,
+            perception = 10,
+            name = "Dave",
+            title = "The One Who Overcame Adversity",
+            job = "Coach"
+        )
+    }
+
+    fun spendAbilityPoints(pointsToSpend: Int, chosenAbility: String) {
+        val currentStats = _uiState.value.stats
+
+        if (currentStats == null) {
+            e("StatsViewModel", "Attempted to spend points but no character stats are loaded.")
+            return
+        }
+        if (currentStats.availablePoints < pointsToSpend) {
+            _uiState.update { it.copy(errorMessage = "Not enough available points!") }
+            return
+        }
+        val updatedStats = when (chosenAbility.lowercase()) {
+            "strength" -> currentStats.copy(
+                strength = currentStats.strength + pointsToSpend,
+                availablePoints = currentStats.availablePoints - pointsToSpend
+            )
+            "agility" -> currentStats.copy(
+                agility = currentStats.agility + pointsToSpend,
+                availablePoints = currentStats.availablePoints - pointsToSpend
+            )
+            "perception" -> currentStats.copy(
+                perception = currentStats.perception + pointsToSpend,
+                availablePoints = currentStats.availablePoints - pointsToSpend
+            )
+            "vitality" -> currentStats.copy(
+                vitality = currentStats.vitality + pointsToSpend,
+                availablePoints = currentStats.availablePoints - pointsToSpend
+            )
+            "intelligence" -> currentStats.copy(
+                intelligence = currentStats.intelligence + pointsToSpend,
+                availablePoints = currentStats.availablePoints - pointsToSpend
+            )
+            else -> {
+                e("StatsViewModel", "Unknown ability provided: $chosenAbility")
+                currentStats
+            }
+        }
+        viewModelScope.launch {
+            userStatsDao.updateUserStats(updatedStats)
         }
     }
 
     fun clearErrorMessage() {
-        _errorMessage.value = null
+        _uiState.update { it.copy(errorMessage = null) }
+    }
+
+    fun addAbilityPoints() {
+        val currentStats = _uiState.value.stats
+
+        if (currentStats == null) {
+            e("StatsViewModel", "Attempted to spend points but no character stats are loaded.")
+            return
+        }
+
+        val updatedStats = currentStats.copy(
+            availablePoints = currentStats.availablePoints + 1
+        )
+        Log.d("StatsViewModel", "Current Ability Points: ${currentStats.availablePoints}\nNew Ability Points: ${updatedStats.availablePoints}")
+        viewModelScope.launch {
+            userStatsDao.updateUserStats(updatedStats)
+        }
     }
 }

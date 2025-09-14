@@ -34,12 +34,12 @@ interface QuestDao {
 
 @Dao
 interface UserStatsDao {
-    @Query("SELECT * FROM user_stats WHERE userId = :userId LIMIT 1")
-    fun getUserStats(userId: String = "currentUser"): Flow<List<UserStatsEntity>>
+    @Query("SELECT * FROM user_stats LIMIT 1")
+    fun getUserStats(): Flow<UserStatsEntity?>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    fun saveUserStats(stats: UserStatsEntity)
+    suspend fun saveUserStats(stats: UserStatsEntity)
 
     @Update
-    fun updateUserStats(stats: UserStatsEntity)
+    suspend fun updateUserStats(stats: UserStatsEntity)
 }

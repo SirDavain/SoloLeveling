@@ -21,7 +21,7 @@ data class QuestEntity(
     val timeOfCreation: Long,
     @ColumnInfo(defaultValue = "0")
     val duration: Int
-    // Do I need these?
+    // Do I need this?
     /*@ColumnInfo(defaultValue = "0")
     val deadline: Long, */
 )
@@ -29,14 +29,17 @@ data class QuestEntity(
 @Entity(tableName = "user_stats")
 data class UserStatsEntity(
     @PrimaryKey val userId: String = "currentUser",
+    var name: String,
+    var title: String,
+    var job: String,
     var level: Int,
     var currentXp: Int,
     var xpToNextLevel: Int,
     var strength: Int,
     var agility: Int,
-    val perception: Int,
-    val vitality: Int,
-    val intelligence: Int,
-    val availablePoints: Int
+    var perception: Int,
+    var vitality: Int,
+    var intelligence: Int,
+    var availablePoints: Int
 )
 
