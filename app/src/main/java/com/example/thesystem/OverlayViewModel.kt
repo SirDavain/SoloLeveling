@@ -46,7 +46,7 @@ class OverlayViewModel @Inject constructor() : ViewModel() {
     fun triggerEdgeLighting() {
         viewModelScope.launch {
             _edgeLightNotificationState.value = EdgeLightState.Pulsing
-            delay(3000L)
+            delay(2000L)
             _edgeLightNotificationState.value = EdgeLightState.Idle
         }
     }

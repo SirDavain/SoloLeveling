@@ -89,7 +89,7 @@ fun QuestLogScreen(
                                     QuestListItem(
                                         quest = quest,
                                         onDoneChange = { isDone ->
-                                            questViewModel.onQuestDoneChanged(quest.id, isDone)
+                                            questViewModel.onQuestDoneChanged(quest.id, isDone, quest)
                                         },
                                         onTextChange = { newText ->
                                             questViewModel.onQuestTextChanged(quest.id, newText)

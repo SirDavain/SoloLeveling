@@ -193,92 +193,6 @@ fun QuestListItem(
     }
 }
 
-/*@Composable
-fun AddQuestDialog(
-    newQuestText: String,
-    onTextChange: (String) -> Unit,
-    selectedCategory: QuestCategory,
-    onCategoryChange: (QuestCategory) -> Unit,
-    onDismiss: () -> Unit,
-    onConfirm: (questText: String, category: QuestCategory, hours: Int, minutes: Int) -> Unit
-) {
-    var questHours by rememberSaveable { mutableStateOf(0) }
-    var questMinutes by rememberSaveable { mutableStateOf(0) }
-
-    var showDurationPicker by rememberSaveable { mutableStateOf(true) }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Add New Quest") },
-        text = {
-            Column {
-                OutlinedTextField(
-                    value = newQuestText,
-                    onValueChange = onTextChange,
-                    label = { Text("Accept a new quest") },
-                    singleLine = true,
-                    keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences)
-                )
-                Spacer(Modifier.height(16.dp))
-                Text("Category:", style = MaterialTheme.typography.labelMedium)
-                // Category Radio Buttons or Dropdown
-                QuestCategory.entries.forEach { category ->
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        RadioButton(
-                            selected = category == selectedCategory,
-                            onClick = { onCategoryChange(category) }
-                        )
-                        Text(category.name.replace("_", " ").capitalizeWords())
-                    }
-                }
-                Spacer(Modifier.height(16.dp))
-
-                // add option to select time frame for one-time quests
-                Text("Quest Duration:", style = MaterialTheme.typography.labelMedium)
-
-                Button(onClick = { showDurationPicker = !showDurationPicker }) {
-                    Text(if (showDurationPicker) "Hide duration picker" else "Set quest duration")
-                }
-                if (showDurationPicker) {
-                    Spacer(Modifier.height(8.dp))
-                    QuestDurationWheelPicker(
-                        initialHours = questHours,
-                        initialMinutes = questMinutes,
-                        onDurationChange = { hours, minutes ->
-                            questHours = hours
-                            questMinutes = minutes
-                        }
-                    )
-                } else {
-                    Text("Duration: ${String.format("%02d", questHours)}h ${String.format("%02d", questMinutes)}m")
-                }
-            }
-        },
-        confirmButton = {
-            Button(
-                onClick = {
-                    // Pass all data, including duration, back
-                    onConfirm(newQuestText, selectedCategory, questHours, questMinutes)
-                    Log.d("AddQuestDialog", "Confirming with duration: ${questHours}h ${questMinutes}m")
-                },
-                enabled = newQuestText.isNotBlank()
-            ) {
-                Text("Add")
-            }
-            Log.d("ConfirmAddQuest", "Saving quest with duration: ${questHours}h ${questMinutes}m")
-            *//*if (questHours > 0) {
-                var totalMinutes = questHours * 60 + questMinutes
-                quest.
-            }*//*
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Cancel")
-            }
-        }
-    )
-}*/
-
 interface AppLogger {
     fun d(tag: String, message: String)
 }
@@ -297,8 +211,8 @@ fun QuestCategoryDropdown(
     modifier: Modifier = Modifier,
     label: String = "Quest Category",
     options: List<String> = getAllQuestCategoryDisplayNames(),
-    selectedOption: String = "One-time Quest",
-    onOptionSelected: () -> Unit
+    selectedOption: String,
+    onOptionSelected: (String) -> Unit
 ) {
     var isExpanded by remember { mutableStateOf(false) }
 
@@ -308,7 +222,6 @@ fun QuestCategoryDropdown(
         modifier = modifier
     ) {
         OutlinedTextField(
-            //value = selectedOption?.displayName ?: "",
             value = selectedOption,
             onValueChange = {},
             readOnly = true,
@@ -316,9 +229,7 @@ fun QuestCategoryDropdown(
             trailingIcon = {
                 ExposedDropdownMenuDefaults.TrailingIcon(expanded = isExpanded)
             },
-            modifier = Modifier
-                .menuAnchor()
-                .fillMaxWidth()
+            modifier = Modifier.fillMaxWidth().menuAnchor()
         )
         ExposedDropdownMenu(
             expanded = isExpanded,
@@ -328,7 +239,7 @@ fun QuestCategoryDropdown(
                 DropdownMenuItem(
                     text = { Text(option) },
                     onClick = {
-                        //onOptionSelected(option)
+                        onOptionSelected(option)
                         isExpanded = false
                     }
                 )

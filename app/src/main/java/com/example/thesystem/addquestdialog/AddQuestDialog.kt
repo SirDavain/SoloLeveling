@@ -48,6 +48,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.example.thesystem.QuestDurationWheelPicker
 import com.example.thesystem.questManagement.QuestManagementViewModel
+import com.example.thesystem.questlogscreen.QuestCategoryDropdown
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -101,24 +102,17 @@ fun AddQuestFullScreenContent(
             )
             Spacer(Modifier.height(24.dp))
 
-            Text("Category:", style = MaterialTheme.typography.titleMedium)
-            // Using a simple Row of RadioButtons, consider ExposedDropdownMenu for more options
-            QuestCategory.entries.forEach { category ->
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { onCategoryChanged(category) }
-                        .padding(vertical = 4.dp)
-                ) {
-                    RadioButton(
-                        selected = category == currentQuestCategory,
-                        onClick = { onCategoryChanged(category) }
-                    )
-                    Spacer(Modifier.width(8.dp))
-                    Text(category.name.replace("_", " ").capitalizeWords())
+            // Get a dropdown of quest categories
+            QuestCategoryDropdown(
+                selectedOption = currentQuestCategory.category,
+                onOptionSelected = { selectedName ->
+                    val newCategory = QuestCategory.entries.find { it.category == selectedName }
+                    if (newCategory != null) {
+                        onCategoryChanged(newCategory)
+                    }
                 }
-            }
+            )
+
             Spacer(Modifier.height(24.dp))
 
             Text("Quest Duration:", style = MaterialTheme.typography.titleMedium)
@@ -126,24 +120,10 @@ fun AddQuestFullScreenContent(
             QuestDurationWheelPicker(
                 currentHours = currentHours,
                 currentMinutes = currentMinutes,
-                onHoursChanged = { hours -> onHoursChanged(hours) },
-                onMinutesChanged = { minutes -> onMinutesChanged(minutes) },
+                onHoursChanged = onHoursChanged,
+                onMinutesChanged = onMinutesChanged,
             )
             Spacer(Modifier.height(24.dp))
-
-            // You could have a primary save button at the bottom as well,
-            // or rely solely on the TopAppBar action.
-            /*
-            Button(
-                onClick = {
-                    onConfirm(questText, selectedCategory, questHours, questMinutes)
-                },
-                enabled = questText.isNotBlank(),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text("Add Quest")
-            }
-            */
         }
     }
 }

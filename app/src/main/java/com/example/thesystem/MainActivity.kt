@@ -35,6 +35,7 @@ import com.example.thesystem.mainpager.MainPagerScreen
 import com.example.thesystem.settingsScreen.SettingsScreen
 import dagger.hilt.android.AndroidEntryPoint
 import androidx.compose.material3.Surface
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -43,11 +44,11 @@ import com.example.thesystem.animations.LevelUpAnimationOverlay
 import com.example.thesystem.animations.QuestFailedAnimationOverlay
 import com.example.thesystem.questManagement.QuestManagementViewModel
 import com.example.thesystem.animations.QuestCompletedAnimationOverlay
+import com.example.thesystem.questManagement.OverlayCoordinator
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
 
-    //@SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -59,11 +60,19 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun TheSystem() {
-
     val overlayViewModel: OverlayViewModel = hiltViewModel()
     val questManagementViewModel: QuestManagementViewModel = hiltViewModel()
+
     val navController = rememberNavController()
     val edgeLightState by overlayViewModel.edgeLightNotificationState.collectAsState()
+
+    LaunchedEffect(questManagementViewModel, overlayViewModel) {
+        questManagementViewModel.overlayCoordinator = object : OverlayCoordinator {
+            override fun showOverlay(overlay: Overlay) {
+                overlayViewModel.show(overlay)
+            }
+        }
+    }
 
     SoloLevelingApplicationTheme {
         Box(modifier = Modifier.fillMaxSize()) {
@@ -94,7 +103,7 @@ fun TheSystem() {
                         }
                     }
                 }
-                questManagementViewModel.CheckAndFailOverdueQuests(overlayViewModel)
+                questManagementViewModel.CheckAndFailOverdueQuests()
 
                 // --- Display Overlays ---
 
@@ -102,54 +111,22 @@ fun TheSystem() {
                 when (val overlay = currentOverlay) {
                     is Overlay.QuestFailed -> QuestFailedAnimationOverlay(
                         visible = true,
-                        info = Overlay.QuestFailed(overlay.questText, -42),
+                        info = overlay,
                         onDismiss = { overlayViewModel.dismiss() }
                     )
                     is Overlay.LevelUp -> LevelUpAnimationOverlay(
                         visible = true,
-                        info = Overlay.LevelUp(3, 1),
+                        info = overlay,
                         onDismiss = { overlayViewModel.dismiss() }
                     )
                     is Overlay.QuestCompleted -> QuestCompletedAnimationOverlay(
                         visible = true,
-                        info = Overlay.QuestCompleted(overlay.questText, 42),
+                        info = overlay,
                         onDismiss = { overlayViewModel.dismiss() }
                     )
                     Overlay.None -> { }
                 }
             }
-        }
-    }
-}
-
-@Composable
-fun InputField(
-    str: String,
-    onTextChange: (String) -> Unit
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(16.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        OutlinedTextField(
-            value = str,
-            onValueChange = onTextChange,
-            modifier = Modifier
-                .weight(1f)
-                .defaultMinSize(minHeight = 48.dp)
-                .testTag("input_text_field") // for testing purposes
-        )
-        Spacer(modifier = Modifier.width(30.dp))
-        FloatingActionButton(
-            modifier = Modifier
-                .testTag("addEditFab"),
-            onClick = { /*doSmth()*/ },
-            shape = CircleShape,
-        ) {
-            Log.d("InputField", "FAB for adding something clicked")
-            Icon(Icons.Filled.Add, contentDescription = "Add/edit")
         }
     }
 }
