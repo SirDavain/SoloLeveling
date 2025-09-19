@@ -1,6 +1,10 @@
 package com.example.thesystem.statScreen
 
+import android.R.color.white
 import android.annotation.SuppressLint
+import android.graphics.Color.blue
+import android.graphics.Color.red
+import android.util.Log
 import android.widget.Space
 import android.widget.Toast
 import androidx.compose.foundation.layout.Arrangement
@@ -34,11 +38,11 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.graphics.Color
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.thesystem.Overlay
 import com.example.thesystem.OverlayViewModel
-import com.example.thesystem.animations.LevelUpAnimationOverlay
 import com.example.thesystem.questManagement.QuestManagementViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -48,18 +52,19 @@ import kotlinx.coroutines.flow.asStateFlow
 @Composable
 fun StatScreen(
     navController: NavController,
-    questViewModel: QuestManagementViewModel = viewModel(),
-    statsViewModel: StatsViewModel = viewModel(),
-    overlayViewModel: OverlayViewModel = viewModel()
+    statsViewModel: StatsViewModel
 ) {
+    Log.d("ViewModelTrace", "StatScreen composable: Received statsViewModel hashCode = ${statsViewModel.hashCode()}")
+
+    if (statsViewModel.overlayCoordinator == null) {
+        Log.e("ViewModelTrace", "StatScreen composable: statsViewModel.overlayCoordinator is NULL for hashCode = ${statsViewModel.hashCode()}") // <<<< ADD THIS
+    } else {
+        Log.d("ViewModelTrace", "StatScreen composable: statsViewModel.overlayCoordinator is NOT NULL for hashCode = ${statsViewModel.hashCode()}") // <<<< ADD THIS
+    }
+
     val levelProgress = statsViewModel.levelProgress
 
-    var showLevelUpOverlay by remember { mutableStateOf(false) }
-    var levelUpOverlayInfo by remember { mutableStateOf<Overlay.LevelUp?>(null) }
-
     val statsUiState by statsViewModel.uiState.collectAsStateWithLifecycle()
-
-    //val uiState by questViewModel.uiState.collectAsState()
 
     val context = LocalContext.current
 
@@ -89,7 +94,7 @@ fun StatScreen(
                     ) {
                         Row {
                             Text(
-                                text = "100",
+                                text = statsUiState.stats?.level.toString(),
                                 style = MaterialTheme.typography.headlineMedium,
                                 fontWeight = FontWeight.Bold
                             )
@@ -103,6 +108,7 @@ fun StatScreen(
                         }
                     }
                     Column {
+                        StatRow(label = "Name", value = statsUiState.stats?.name)
                         StatRow(label = "Job", value = statsUiState.stats?.job)
                         StatRow(label = "Title", value = statsUiState.stats?.title)
                     }
@@ -118,8 +124,9 @@ fun StatScreen(
                     LinearProgressIndicator(
                         progress = { levelProgress },
                         modifier = Modifier.weight(1f),
-                        /*color = ,
-                        trackColor = */
+                        color = Color(234, 16, 235),
+                        trackColor = Color(255,255,255),
+                        //strokeCap =
                     )
                 }
 
@@ -134,7 +141,9 @@ fun StatScreen(
 
                 // Core Stats
                 Row(
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 40.dp, vertical = 0.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 40.dp, vertical = 0.dp),
                     horizontalArrangement = Arrangement.Absolute.SpaceEvenly
                 ) {
                     Column(horizontalAlignment = Alignment.Start, modifier = Modifier.weight(1f)) {
@@ -188,19 +197,6 @@ fun StatScreen(
 
                 Spacer(Modifier.height(10.dp))
 
-                // Level Up Overlay test
-                Button(
-                    onClick = {
-                        val newLevelToShow = statsUiState.stats?.level
-                        levelUpOverlayInfo = Overlay.LevelUp(newLevelToShow!!, 1)
-                        showLevelUpOverlay = true
-                    }
-                ) {
-                    Text("Level Up Overlay")
-                }
-
-                Spacer(Modifier.height(10.dp))
-
                 // Simulate spending points
                 Button(
                     onClick = {
@@ -210,19 +206,10 @@ fun StatScreen(
                 ) {
                     Text("Increase strength")
                 }
-
-                Spacer(Modifier.height(10.dp))
-
-                // Increase ability points
-                Button(
-                    onClick = {
-                        statsViewModel.addAbilityPoints()
-                    }
-                ) {
-                    Text("Add points")
-                }
             }
-            if (showLevelUpOverlay && levelUpOverlayInfo != null) {
+
+            // TODO find a new way to trigger EdgeLighting
+            /*if (showLevelUpOverlay && levelUpOverlayInfo != null) {
                 LevelUpAnimationOverlay(
                     visible = true,
                     info = levelUpOverlayInfo!!,
@@ -233,7 +220,7 @@ fun StatScreen(
                     }
                 )
                 overlayViewModel.triggerEdgeLighting()
-            }
+            }*/
         }
     }
 }

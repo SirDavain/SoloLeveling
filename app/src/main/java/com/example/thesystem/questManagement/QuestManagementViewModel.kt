@@ -28,9 +28,12 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.thesystem.UserStatsDao
+import com.example.thesystem.UserStatsEntity
 import com.example.thesystem.statScreen.StatsScreenUiState
 import com.example.thesystem.statScreen.StatsViewModel
 import com.example.thesystem.xpLogic.QuestCategory
+import com.example.thesystem.xpLogic.calculateAbilityPointsForLevelUp
+import com.example.thesystem.xpLogic.calculateXpForNextLevel
 import com.example.thesystem.xpLogic.calculateXpForQuest
 import kotlinx.coroutines.delay
 
@@ -46,9 +49,9 @@ data class UiQuest(
     var isBeingEdited: Boolean = false
 )
 
-fun QuestEntity.toUiQuest(): UiQuest {
+fun QuestEntity.toUiQuest(userLevel: Int): UiQuest {
     return UiQuest(
-        xp = 0,
+        xp = calculateXpForQuest(userLevel, category, duration),
         id = id,
         text = text,
         isDone = isDone,
@@ -100,19 +103,40 @@ class QuestManagementViewModel @Inject constructor(
 
     init {
         loadQuests()
+        //observeUserStatsForLevelUp()
     }
 
     private fun loadQuests() {
         viewModelScope.launch {
+            val currentStats = userStatsDao.getUserStats().first()
+            if (currentStats == null)
+                return@launch
             _uiState.update { it.copy(isLoading = true) }
             questDao.getAllQuests()
-                .map { entities -> entities.map { it.toUiQuest() } }
+                .map { entities -> entities.map { it.toUiQuest(currentStats.level) } }
                 .distinctUntilChanged()
                 .collect { questList ->
                     _uiState.update { it.copy(quests = questList, isLoading = false) }
                 }
         }
     }
+
+    /*private fun observeUserStatsForLevelUp() {
+        viewModelScope.launch {
+            // .drop(1) is important to avoid a level-up check on app startup.
+            // We only want to check when XP *changes*.
+            userStatsDao.getUserStats()
+                .drop(1)
+                .distinctUntilChanged() { old, new -> old?.currentXp == new?.currentXp }
+                .collect { stats ->
+                if (stats != null) {
+                    // When stats change, check if it caused a level up.
+                    Log.d("Observer", "XP changed to ${stats.currentXp}. Checking for level up.")
+                    checkForLevelUp(stats)
+                }
+            }
+        }
+    }*/
 
     // This is the function the FAB in MainPagerScreen will call
     fun onAddQuestClicked() {
@@ -126,7 +150,7 @@ class QuestManagementViewModel @Inject constructor(
                 newQuestCategory = QuestCategory.ONE_TIME,
                 newQuestHours = 0,
                 newQuestMinutes = 0
-                )
+            )
         }
     }
 
@@ -151,60 +175,50 @@ class QuestManagementViewModel @Inject constructor(
     }
 
     fun onConfirmAddQuest() {
-        Log.d("QuestManagementVM", "onConfirmAddQuest called")
-        val currentUiState = _uiState.value
-        if (currentUiState.newQuestText.isBlank()) return
-
-        val currentTime = System.currentTimeMillis()
-
-        val totalTimeInMinutes: Int =
-            if (currentUiState.newQuestHours == 0)
-                currentUiState.newQuestMinutes
-            else
-                (currentUiState.newQuestHours * 60) + currentUiState.newQuestMinutes
-        if (totalTimeInMinutes == 0) {
-            // make "Quest Duration" flash briefly
-            return
-        }
-
-        val newQuestEntity = QuestEntity(
-            text = currentUiState.newQuestText,
-            category = currentUiState.newQuestCategory,
-            duration = totalTimeInMinutes,
-            xp = calculateXpForQuest(
-                currentUiState.newQuestCategory,
-                totalTimeInMinutes),
-            timeOfCreation = currentTime
-            // add deadline (using calendar composable) - only day, always midnight
-            // dynamic countdown = deadline - currentTime
-        )
         viewModelScope.launch {
-            questDao.insertQuest(newQuestEntity)
-        }
-        _uiState.update {
-            it.copy(
-                showAddQuestDialog = false
-                //quests = it.quests + newQuestEntity,
-            )
-        }
+            val currentUiState = _uiState.value
+            val currentStats = userStatsDao.getUserStats().first()
 
-        val sdf = SimpleDateFormat("dd-MM-yyyy HH:mm:ss", Locale.getDefault())
-        val readableTime = sdf.format(Date(currentTime))
-        Log.d("Adding quest", "Creation time is $currentTime, readable: $readableTime")
-
-        Log.d("onConfirmAddQuest", "Quest Duration is: ${currentUiState.newQuestHours}h ${currentUiState.newQuestMinutes}m (In total: ${newQuestEntity.duration})")
-
-        Log.d("onConfirmAddQuest", "Amount of XP to be gained is ${newQuestEntity.xp}")
-    }
-
-    fun onQuestDoneChanged(questId: String, isDone: Boolean, quest: UiQuest) {
-        viewModelScope.launch {
-            val questToUpdate = _uiState.value.quests.find { it.id == questId }
-            questToUpdate?.let {
-                questDao.updateQuest(it.copy(isDone = isDone).toQuestEntity())
+            if (currentUiState.newQuestText.isBlank() || currentStats == null) {
+                e("QuestManagementVM", "Cannot add quest. Text is blank or stats are missing.")
+                return@launch
             }
+
+            val currentTime = System.currentTimeMillis()
+            val totalTimeInMinutes: Int =
+                (currentUiState.newQuestHours * 60) + currentUiState.newQuestMinutes
+            if (totalTimeInMinutes == 0)
+                // TODO make "Quest Duration flash briefly
+                return@launch
+
+            val newQuestEntity = QuestEntity(
+                text = currentUiState.newQuestText,
+                category = currentUiState.newQuestCategory,
+                duration = totalTimeInMinutes,
+                xp = calculateXpForQuest(
+                    currentStats.level,
+                    currentUiState.newQuestCategory,
+                    totalTimeInMinutes),
+                timeOfCreation = currentTime
+                // add deadline (using calendar composable) - only day, always midnight
+                // dynamic countdown = deadline - currentTime
+            )
+            questDao.insertQuest(newQuestEntity)
+
+            _uiState.update {
+                it.copy(
+                    showAddQuestDialog = false
+                )
+            }
+
+            val sdf = SimpleDateFormat("dd-MM-yyyy HH:mm:ss", Locale.getDefault())
+            val readableTime = sdf.format(Date(currentTime))
+            Log.d("Adding quest", "Creation time is $currentTime, readable: $readableTime")
+
+            Log.d("onConfirmAddQuest", "Quest Duration is: ${currentUiState.newQuestHours}h ${currentUiState.newQuestMinutes}m (In total: ${newQuestEntity.duration})")
+
+            Log.d("onConfirmAddQuest", "Amount of XP to be gained is ${newQuestEntity.xp}")
         }
-        onQuestSuccess(quest)
     }
 
     fun onToggleEditQuest(questId: String) {
@@ -263,37 +277,87 @@ class QuestManagementViewModel @Inject constructor(
         selectedQuestCategoryForDialog.value = newCategory
     }
 
-    fun onQuestSuccess(quest: UiQuest) {
+    fun onQuestSuccess(questId: String) {
         viewModelScope.launch {
-            val currentStats = userStatsDao.getUserStats().first()
-            if (currentStats == null) {
-                e("QuestManagementViewModel", "Attempted to increase XP but stats aren't loaded.")
+            val questToComplete = _uiState.value.quests.find { it.id == questId }
+            if (questToComplete == null) {
+                e("QuestManagementVM", "onQuestSuccess: Quest with ID $questId not found.")
                 return@launch
             }
 
-            val rewards = quest.xp
-            Log.d("QuestManagementViewModel", "Rewards are ${quest.xp} XP")
-            questDao.updateQuest(
-                quest.copy(
-                    isDone = true,
-                    hasFailed = false
-                ).toQuestEntity()
-            )
-
-            val updatedQuest = quest.copy(hasFailed = false, isDone = true)
+            // Show QuestCompleted Overlay
             overlayCoordinator?.showOverlay(
                 Overlay.QuestCompleted(
-                    questText = updatedQuest.text,
-                    gainedXp = quest.xp
+                    questText = questToComplete.text,
+                    gainedXp = questToComplete.xp
                 )
             )
 
-            val updatedStats = currentStats.copy(
-                currentXp = currentStats.currentXp + rewards
+            questDao.updateQuest(
+                questToComplete.copy(isDone = true, hasFailed = false).toQuestEntity()
             )
-            userStatsDao.updateUserStats(updatedStats)
-            Log.d("QuestManagementViewModel", "Completed quest \"${quest.text}\" for ${quest.xp} XP")
+
+            val currentStats = userStatsDao.getUserStats().first()
+            if (currentStats == null) {
+                e("QuestManagementVM", "Attempted to increase XP but stats aren't loaded.")
+                return@launch
+            }
+
+            // Calculate New XP and Update the Database
+            val statsWithNewXp = currentStats.copy(currentXp = currentStats.currentXp + questToComplete.xp)
+            userStatsDao.updateUserStats(statsWithNewXp)
+            Log.d("QuestManagementVM", "Completed quest. XP is now ${statsWithNewXp.currentXp}")
+
+            Log.d("QuestManagementVM", "Delaying before level up check...")
+            delay(2500L)
+
+            val statsAfterQuestCompleted = userStatsDao.getUserStats().first()
+            if (statsAfterQuestCompleted != null) {
+                Log.d("QuestManagementVM", "Checking for level up with XP: ${statsAfterQuestCompleted.currentXp}")
+                checkForLevelUp(statsAfterQuestCompleted)
+            } else {
+                Log.e("QuestManagementVM", "Stats became null after delay, cannot check for level up.")
+            }
         }
+    }
+
+    private fun checkForLevelUp(stats: UserStatsEntity) {
+        var currentStats = stats.copy()
+        var hasLeveledUp = false
+
+        while (currentStats.currentXp >= currentStats.xpToNextLevel) {
+            hasLeveledUp = true
+
+            val remainingXp = currentStats.currentXp - currentStats.xpToNextLevel
+            val newLevel = currentStats.level + 1
+
+            val newXpRequirement = calculateXpForNextLevel(newLevel)
+            val gainedAbilityPoints = calculateAbilityPointsForLevelUp(newLevel)
+
+            currentStats = currentStats.copy(
+                level = newLevel,
+                currentXp = remainingXp,
+                xpToNextLevel = newXpRequirement,
+                availablePoints = currentStats.availablePoints + gainedAbilityPoints
+            )
+            Log.d("QuestManagementVM", "LEVEL UP! New Level: $newLevel. Gained $gainedAbilityPoints points.")
+
+            overlayCoordinator?.showOverlay(
+                Overlay.LevelUp(
+                    newLevel = newLevel,
+                    abilityPoints = gainedAbilityPoints
+                )
+            )
+
+            // Possibly add a delay in order for multiple level ups to occur back-to-back
+        }
+
+        if (hasLeveledUp) {
+            viewModelScope.launch {
+                userStatsDao.updateUserStats(currentStats)
+            }
+        }
+
     }
 
     @Composable

@@ -50,8 +50,8 @@ private const val QUEST_LOG_PAGE_INDEX = 1
 @Composable
 fun MainPagerScreen(
     navController: NavController,
-    questManagementViewModel: QuestManagementViewModel = hiltViewModel(),
-    statsViewModel: StatsViewModel = hiltViewModel()
+    questManagementViewModel: QuestManagementViewModel,
+    statsViewModel: StatsViewModel
 ) {
     val pageCount = 2
     val pagerState = rememberPagerState(pageCount = { pageCount })
@@ -142,10 +142,12 @@ fun MainPagerScreen(
                 .padding(paddingValues)
         ) { page ->
             when (page) {
-                STAT_PAGE_INDEX -> StatScreen(
-                    navController = navController,
-                    statsViewModel = statsViewModel
-                )
+                STAT_PAGE_INDEX -> {
+                    StatScreen(
+                        navController = navController,
+                        statsViewModel = statsViewModel
+                    )
+                }
                 QUEST_LOG_PAGE_INDEX -> QuestLogScreen(
                     navController = navController,
                     questViewModel = questManagementViewModel

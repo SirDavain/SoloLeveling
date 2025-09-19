@@ -1,5 +1,6 @@
 package com.example.thesystem.questlogscreen
 
+import android.R.attr.enabled
 import android.util.Log
 import androidx.compose.runtime.Composable
 import androidx.compose.foundation.layout.Row
@@ -22,6 +23,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -45,7 +47,7 @@ import kotlinx.coroutines.delay
 @Composable
 fun QuestListItem(
     quest: UiQuest,
-    onDoneChange: (Boolean) -> Unit,
+    onDoneChange: () -> Unit,
     onTextChange: (String) -> Unit,
     onToggleEdit: () -> Unit,
     onSaveEdit: () -> Unit,
@@ -116,7 +118,7 @@ fun QuestListItem(
     ) {
         RadioButton(
             selected = quest.isDone,
-            onClick = { onDoneChange(!quest.isDone) },
+            onClick = onDoneChange,
             enabled = !quest.isBeingEdited, // Disable when editing text
             colors = RadioButtonDefaults.colors(
                 selectedColor = MaterialTheme.colorScheme.primary,
@@ -166,6 +168,14 @@ fun QuestListItem(
                             focusManager.clearFocus()
                         }) {
                             Icon(Icons.Filled.Close, "Cancel edit")
+                        }
+                        if (quest.isDone) {
+                            IconButton(onClick = {
+                                onDelete() // Delete a completed quest
+                                focusManager.clearFocus()
+                            }) {
+                                Icon(Icons.Filled.Delete, "Delete quest")
+                            }
                         }
                     }
                 }

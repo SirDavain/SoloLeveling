@@ -1,6 +1,7 @@
 package com.example.thesystem.questlogscreen
 
 import android.util.Log
+import android.util.Log.w
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -42,7 +43,7 @@ import com.example.thesystem.addquestdialog.AddQuestFullScreenDialog
 @Composable
 fun QuestLogScreen(
     navController: NavController,
-    questViewModel: QuestManagementViewModel = viewModel()
+    questViewModel: QuestManagementViewModel
 ) {
     val uiState by questViewModel.uiState.collectAsState()
 
@@ -88,9 +89,7 @@ fun QuestLogScreen(
                                 items(questsInCategory, key = { it.id }) { quest ->
                                     QuestListItem(
                                         quest = quest,
-                                        onDoneChange = { isDone ->
-                                            questViewModel.onQuestDoneChanged(quest.id, isDone, quest)
-                                        },
+                                        onDoneChange = { questViewModel.onQuestSuccess(quest.id) },
                                         onTextChange = { newText ->
                                             questViewModel.onQuestTextChanged(quest.id, newText)
                                         },
@@ -142,34 +141,6 @@ fun QuestLogScreen(
 
 // Helper to capitalize words for category titles
 fun String.capitalizeWords(): String = split(" ").joinToString(" ") { it.lowercase().replaceFirstChar(Char::titlecase) }
-
-@Composable
-fun QuestSectionTitle(title: String) {
-    Text(
-        text = title,
-        style = MaterialTheme.typography.titleMedium,
-        modifier = Modifier.padding(top = 16.dp, bottom = 8.dp)
-    )
-}
-
-@Composable
-fun QuestItem(questTitle: String) {
-    Text(
-        text = "- $questTitle",
-        style = MaterialTheme.typography.bodyLarge,
-        modifier = Modifier.padding(vertical = 4.dp)
-    )
-}
-
-@Composable
-fun EmptyQuestText() {
-    Text(
-        text = "There are no quests here yet.",
-        style = MaterialTheme.typography.bodyMedium,
-        color = Color.Gray,
-        modifier = Modifier.padding(vertical = 8.dp)
-    )
-}
 
 /*
 @Preview

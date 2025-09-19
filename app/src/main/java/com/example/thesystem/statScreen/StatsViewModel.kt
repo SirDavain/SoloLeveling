@@ -8,9 +8,11 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.thesystem.Overlay
 import com.example.thesystem.QuestDao
 import com.example.thesystem.UserStatsDao
 import com.example.thesystem.UserStatsEntity
+import com.example.thesystem.questManagement.OverlayCoordinator
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -35,6 +37,8 @@ class StatsViewModel @Inject constructor(
 
     private val _uiState = MutableStateFlow(StatsScreenUiState())
     val uiState: StateFlow<StatsScreenUiState> = _uiState.asStateFlow()
+
+    var overlayCoordinator: OverlayCoordinator? = null
 
     val levelProgress: Float
         get() {
@@ -125,6 +129,31 @@ class StatsViewModel @Inject constructor(
         viewModelScope.launch {
             userStatsDao.updateUserStats(updatedStats)
         }
+    }
+
+    fun simulateQuestCompleted() {
+        val testQuestText = "Fake a completed quest"
+        val testGainedXp = 75
+
+        if (overlayCoordinator == null) {
+            Log.e("StatsViewModel", "CRITICAL ERROR: overlayCoordinator is NULL in simulateQuestCompleted!")
+        } else {
+            Log.d("StatsViewModel", "overlayCoordinator is NOT NULL. Calling showOverlay.")
+            overlayCoordinator?.showOverlay( // Use safe call just in case, though the check above should cover it
+                Overlay.QuestCompleted(
+                    questText = testQuestText,
+                    gainedXp = testGainedXp
+                )
+            )
+        }
+
+        overlayCoordinator?.showOverlay(
+            Overlay.QuestCompleted(
+                questText = testQuestText,
+                gainedXp = testGainedXp
+            )
+        )
+        Log.d("StatsViewModel", "Simulating Quest Completed Overlay for: '$testQuestText'")
     }
 
     fun clearErrorMessage() {

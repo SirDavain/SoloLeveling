@@ -35,11 +35,11 @@ data class UserStatsEntity(
     var level: Int,
     var currentXp: Int,
     var xpToNextLevel: Int,
+    var availablePoints: Int,
     var strength: Int,
     var agility: Int,
     var perception: Int,
     var vitality: Int,
-    var intelligence: Int,
-    var availablePoints: Int
+    var intelligence: Int
 )
 

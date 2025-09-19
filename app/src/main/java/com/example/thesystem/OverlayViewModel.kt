@@ -1,5 +1,6 @@
 package com.example.thesystem
 
+import android.util.Log
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -36,7 +37,11 @@ class OverlayViewModel @Inject constructor() : ViewModel() {
     private val _edgeLightNotificationState = MutableStateFlow(EdgeLightState.Idle)
     val edgeLightNotificationState = _edgeLightNotificationState.asStateFlow()
 
-    fun show(overlay: Overlay) {
+    suspend fun show(overlay: Overlay) {
+        if (_currentOverlay.value !is Overlay.None) {
+            _currentOverlay.value = Overlay.None
+            delay(1)
+        }
         _currentOverlay.value = overlay
     }
     fun dismiss() {

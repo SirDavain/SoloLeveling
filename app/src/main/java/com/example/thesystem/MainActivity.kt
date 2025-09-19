@@ -1,11 +1,14 @@
 package com.example.thesystem
 
+import android.R.attr.onClick
+import android.graphics.Paint
 import com.example.thesystem.statScreen.StatScreen
 import android.os.Bundle
 import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.viewModels
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -45,88 +48,160 @@ import com.example.thesystem.animations.QuestFailedAnimationOverlay
 import com.example.thesystem.questManagement.QuestManagementViewModel
 import com.example.thesystem.animations.QuestCompletedAnimationOverlay
 import com.example.thesystem.questManagement.OverlayCoordinator
+import com.example.thesystem.statScreen.StatsViewModel
+import kotlinx.coroutines.MainScope
+import kotlinx.coroutines.launch
+import androidx.compose.material3.Text
+import androidx.compose.material3.Button
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
 
+    private val statsViewModel: StatsViewModel by viewModels()
+    private val questManagementViewModel: QuestManagementViewModel by viewModels()
+    private val overlayViewModel: OverlayViewModel by viewModels()
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        Log.d("ViewModelTrace", "MainActivity onCreate: statsViewModel hashCode = ${statsViewModel.hashCode()}")
+
+        val coordinator = object : OverlayCoordinator {
+            override fun showOverlay(overlay: Overlay) {
+                CoroutineScope(Dispatchers.Main.immediate).launch {
+                    Log.d("OverlayCoordinator", "Coordinator called with ${overlay::class.java.simpleName}")
+                    overlayViewModel.show(overlay)
+                    Log.d("OverlayCoordinator", "Coordinator finished overlayViewModel.show()")
+                }
+            }
+        }
+        questManagementViewModel.overlayCoordinator = coordinator
+        statsViewModel.overlayCoordinator = coordinator
+        Log.d("ViewModelTrace", "MainActivity onCreate: statsViewModel.overlayCoordinator SET on hashCode = ${statsViewModel.hashCode()}")
+
         enableEdgeToEdge()
         setContent {
-            TheSystem()
+            SoloLevelingApplicationTheme {
+                TheSystem(
+                    overlayViewModel = overlayViewModel,
+                    questManagementViewModel = questManagementViewModel,
+                    statsViewModel = statsViewModel
+                )
+            }
         }
     }
 }
 
 @Composable
-fun TheSystem() {
-    val overlayViewModel: OverlayViewModel = hiltViewModel()
-    val questManagementViewModel: QuestManagementViewModel = hiltViewModel()
+fun TheSystem(
+    overlayViewModel: OverlayViewModel,
+    questManagementViewModel: QuestManagementViewModel,
+    statsViewModel: StatsViewModel
+) {
+
+    Log.d("ViewModelTrace", "TheSystem composable: statsViewModel hashCode = ${statsViewModel.hashCode()}")
 
     val navController = rememberNavController()
+    val currentOverlayState by overlayViewModel.currentOverlay
     val edgeLightState by overlayViewModel.edgeLightNotificationState.collectAsState()
 
-    LaunchedEffect(questManagementViewModel, overlayViewModel) {
-        questManagementViewModel.overlayCoordinator = object : OverlayCoordinator {
-            override fun showOverlay(overlay: Overlay) {
-                overlayViewModel.show(overlay)
-            }
-        }
-    }
+    Log.d("TheSystemComposable", "Recomposing. Current Overlay State: ${currentOverlayState::class.java.simpleName}")
 
-    SoloLevelingApplicationTheme {
-        Box(modifier = Modifier.fillMaxSize()) {
-            FullScreenEdgeLightingEffect(
-                edgeLightState = edgeLightState,
-                pulseColor = MaterialTheme.colorScheme.secondary
-            )
-            Surface(
-                modifier = Modifier.fillMaxSize(),
-                color = MaterialTheme.colorScheme.background
+    Box(modifier = Modifier.fillMaxSize()) {
+        FullScreenEdgeLightingEffect(
+            edgeLightState = edgeLightState,
+            pulseColor = MaterialTheme.colorScheme.secondary
+        )
+        Surface(
+            modifier = Modifier.fillMaxSize(),
+            color = MaterialTheme.colorScheme.background
+        ) {
+            Box(
+                modifier = Modifier.fillMaxSize()
             ) {
-                Box(
-                    modifier = Modifier.fillMaxSize()
+                NavHost(
+                    navController = navController,
+                    startDestination = "mainPager",
                 ) {
-                    NavHost(
-                        navController = navController,
-                        startDestination = "mainPager",
-                    ) {
-                        composable("mainPager") { MainPagerScreen(navController) }
-                        composable(NavRoutes.STAT_SCREEN) {
-                            StatScreen(navController = navController)
-                        }
-                        composable(NavRoutes.QUEST_LOG_SCREEN) {
-                            QuestLogScreen(navController = navController)
-                        }
-                        composable(NavRoutes.SETTINGS_SCREEN) {
-                            SettingsScreen(navController = navController)
-                        }
+                    composable("mainPager") {
+                        MainPagerScreen(
+                            navController,
+                            questManagementViewModel = questManagementViewModel,
+                            statsViewModel = statsViewModel
+                        )
+                    }
+                    composable(NavRoutes.STAT_SCREEN) {
+                        StatScreen(
+                            navController = navController,
+                            statsViewModel = statsViewModel
+                        )
+                    }
+                    composable(NavRoutes.QUEST_LOG_SCREEN) {
+                        QuestLogScreen(
+                            navController = navController,
+                            questViewModel = questManagementViewModel
+                        )
+                    }
+                    composable(NavRoutes.SETTINGS_SCREEN) {
+                        SettingsScreen(navController = navController)
                     }
                 }
-                questManagementViewModel.CheckAndFailOverdueQuests()
-
-                // --- Display Overlays ---
-
-                val currentOverlay by overlayViewModel.currentOverlay
-                when (val overlay = currentOverlay) {
-                    is Overlay.QuestFailed -> QuestFailedAnimationOverlay(
-                        visible = true,
-                        info = overlay,
-                        onDismiss = { overlayViewModel.dismiss() }
-                    )
-                    is Overlay.LevelUp -> LevelUpAnimationOverlay(
-                        visible = true,
-                        info = overlay,
-                        onDismiss = { overlayViewModel.dismiss() }
-                    )
-                    is Overlay.QuestCompleted -> QuestCompletedAnimationOverlay(
-                        visible = true,
-                        info = overlay,
-                        onDismiss = { overlayViewModel.dismiss() }
-                    )
-                    Overlay.None -> { }
-                }
             }
+            // questManagementViewModel.CheckAndFailOverdueQuests()
+
+            // --- Display Overlays ---
+
+            /*when (val overlay = currentOverlayState) { // Use the observed state
+                is Overlay.LevelUp -> {
+                    LevelUpAnimationOverlay(
+                        visible = true, // Simplified: always visible when this branch is taken
+                        info = overlay,
+                        onDismiss = { overlayViewModel.dismiss() }
+                    )
+                }
+                is Overlay.QuestCompleted -> {
+                    Log.d("TheSystemComposable", "WHEN: QuestCompleted branch")
+                    QuestCompletedAnimationOverlay(
+                        visible = true, // Simplified
+                        info = overlay,
+                        onDismiss = { overlayViewModel.dismiss() }
+                    )
+                }
+                is Overlay.QuestFailed -> {
+                    QuestFailedAnimationOverlay(
+                        visible = true, // Simplified
+                        info = overlay,
+                        onDismiss = { overlayViewModel.dismiss() }
+                    )
+                }
+                Overlay.None -> {
+                    Log.d("TheSystemComposable", "WHEN: None branch")
+                    // No overlay to show
+                }
+            }*/
+
+            // 1. Level Up Overlay
+            LevelUpAnimationOverlay(
+                visible = currentOverlayState is Overlay.LevelUp,
+                info = currentOverlayState as? Overlay.LevelUp, // Safe cast
+                onDismiss = { overlayViewModel.dismiss() }
+            )
+
+            // 2. Quest Completed Overlay
+            QuestCompletedAnimationOverlay(
+                visible = currentOverlayState is Overlay.QuestCompleted,
+                info = currentOverlayState as? Overlay.QuestCompleted,
+                onDismiss = { overlayViewModel.dismiss() }
+            )
+
+            // 3. Quest Failed Overlay
+            QuestFailedAnimationOverlay(
+                visible = currentOverlayState is Overlay.QuestFailed,
+                info = currentOverlayState as? Overlay.QuestFailed,
+                onDismiss = { overlayViewModel.dismiss() }
+            )
         }
     }
 }

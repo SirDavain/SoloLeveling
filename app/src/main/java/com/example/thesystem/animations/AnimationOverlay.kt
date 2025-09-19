@@ -1,11 +1,13 @@
 package com.example.thesystem.animations
 
+import android.util.Log
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -20,6 +22,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -30,9 +33,11 @@ import com.example.thesystem.Overlay
 @Composable
 fun LevelUpAnimationOverlay(
     visible: Boolean,
-    info: Overlay.LevelUp,
+    info: Overlay.LevelUp?,
     onDismiss: () -> Unit
 ) {
+    Log.d("AnimationOverlay", "LevelUpOverlay should be showing up.")
+    if (info == null) return
 
     AnimatedVisibility(
         visible = visible,
@@ -42,22 +47,26 @@ fun LevelUpAnimationOverlay(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .wrapContentSize(Alignment.Center)
-                .padding(16.dp)
-                .clickable(onClick = onDismiss),
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null,
+                    onClick = onDismiss),
+                //.wrapContentSize(Alignment.Center)
+                //.padding(16.dp)
             contentAlignment = Alignment.Center
         ) {
             ParticleBurstOverlay(isVisible = visible)
             Card(
-                shape = MaterialTheme.shapes.large,
                 modifier = Modifier
                     .padding(16.dp)
+                    .clickable(enabled = false) {}
                     .animatedCardEdgeGlow(
                         isVisible = visible,
                         glowColor = MaterialTheme.colorScheme.primary,
                         glowWidth = 30.dp,
                         cornerRadius = 16.dp
                 ),
+                shape = MaterialTheme.shapes.large,
                 elevation = CardDefaults.cardElevation(defaultElevation = 10.dp),
                 colors = CardDefaults.cardColors(
                     containerColor = MaterialTheme.colorScheme.secondaryContainer
@@ -81,12 +90,6 @@ fun LevelUpAnimationOverlay(
                         fontSize = 18.sp,
                         color = MaterialTheme.colorScheme.onSecondaryContainer
                     )
-                    /*Text(
-                        text = "$level",
-                        fontSize = 48.sp,
-                        fontWeight = FontWeight.ExtraBold,
-                        color = MaterialTheme.colorScheme.primary
-                    )*/
                     Spacer(Modifier.height(24.dp))
                     Button(onClick = onDismiss) {
                         Text("CONTINUE")
@@ -100,9 +103,11 @@ fun LevelUpAnimationOverlay(
 @Composable
 fun QuestFailedAnimationOverlay(
     visible: Boolean,
-    info: Overlay.QuestFailed,
+    info: Overlay.QuestFailed?,
     onDismiss: () -> Unit
 ) {
+    if (info == null) return
+
     AnimatedVisibility(
         visible = visible,
         enter = fadeIn() + slideInVertically(initialOffsetY = { fullHeight -> -fullHeight }),
@@ -111,11 +116,17 @@ fun QuestFailedAnimationOverlay(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .wrapContentSize(Alignment.Center)
-                .padding(16.dp)
-                .clickable(onClick = onDismiss, enabled = false)
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null,
+                    onClick = onDismiss
+                ),
+            contentAlignment = Alignment.Center
         ) {
             Card(
+                modifier = Modifier
+                    .padding(16.dp)
+                    .clickable(enabled = false) {},
                 shape = MaterialTheme.shapes.large,
                 elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
                 colors = CardDefaults.cardColors(
@@ -128,8 +139,6 @@ fun QuestFailedAnimationOverlay(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.Center
                 ) {
-                    // Optional: Add an image/icon
-                    // Image(painter = painterResource(id = R.drawable.ic_level_up_star), contentDescription = "Level Up")
                     Text(
                         text = "QUEST FAILED",
                         fontSize = 32.sp,
@@ -163,9 +172,12 @@ fun QuestFailedAnimationOverlay(
 @Composable
 fun QuestCompletedAnimationOverlay(
     visible: Boolean,
-    info: Overlay.QuestCompleted,
+    info: Overlay.QuestCompleted?,
     onDismiss: () -> Unit
 ) {
+    Log.d("AnimationOverlay", "QuestCompletedOverlay should be showing up.")
+    if (info == null) return
+
     AnimatedVisibility(
         visible = visible,
         enter = fadeIn() + slideInVertically(initialOffsetY = { fullHeight -> -fullHeight }),
@@ -174,11 +186,17 @@ fun QuestCompletedAnimationOverlay(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .wrapContentSize(Alignment.Center)
-                .padding(16.dp)
-                .clickable(onClick = onDismiss, enabled = false)
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null,
+                    onClick = onDismiss
+                ),
+            contentAlignment = Alignment.Center
         ) {
             Card(
+                modifier = Modifier
+                    .padding(16.dp)
+                    .clickable(enabled = false) {},
                 shape = MaterialTheme.shapes.large,
                 elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
                 colors = CardDefaults.cardColors(
@@ -206,7 +224,7 @@ fun QuestCompletedAnimationOverlay(
                     )
                     // Add a reward for beating the quest
                     Text(
-                        text = "Reward: You gained ${info.gainedXp}",
+                        text = "Reward: You gained ${info.gainedXp} XP",
                         fontSize = 16.sp,
                         modifier = Modifier.padding(top = 8.dp)
                     )
