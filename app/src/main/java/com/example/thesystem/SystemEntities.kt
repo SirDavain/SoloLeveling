@@ -20,10 +20,9 @@ data class QuestEntity(
     @ColumnInfo(defaultValue = "0")
     val timeOfCreation: Long,
     @ColumnInfo(defaultValue = "0")
-    val duration: Int
-    // Do I need this?
-    /*@ColumnInfo(defaultValue = "0")
-    val deadline: Long, */
+    val duration: Int,
+    // @ColumnInfo(defaultValue = "0")
+    val deadline: Long?
 )
 
 @Entity(tableName = "user_stats")

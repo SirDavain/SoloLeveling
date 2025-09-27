@@ -111,11 +111,7 @@ fun QuestLogScreen(
         }
         if (uiState.showAddQuestDialog) {
             AddQuestFullScreenDialog(
-                showDialog = uiState.showAddQuestDialog,
-                currentQuestText = uiState.newQuestText, // Pass from ViewModel's UiState
-                currentCategory = uiState.newQuestCategory, // Pass from ViewModel's UiState
-                currentHours = uiState.newQuestHours, // Pass from ViewModel's UiState
-                currentMinutes = uiState.newQuestMinutes, // Pass from ViewModel's UiState
+                dialogUiState = uiState,
                 onQuestTextChanged = { newText -> // Lambda calling ViewModel method
                     questViewModel.onNewQuestTextChanged(newText)
                 },
@@ -127,6 +123,15 @@ fun QuestLogScreen(
                 },
                 onMinutesChanged = { newMinutes -> // Lambda calling ViewModel method
                     questViewModel.onNewQuestMinutesChanged(newMinutes)
+                },
+                onDeadlineSelected = {
+                    questViewModel.onDeadlineSelected(it)
+                },
+                onShowDeadlinePicker = {
+                    questViewModel.onShowDeadlinePicker()
+                },
+                onDismissDeadlinePicker = {
+                    questViewModel.onDismissDeadlinePicker()
                 },
                 onConfirm = {
                     questViewModel.onConfirmAddQuest() // ViewModel handles logic and dismissal

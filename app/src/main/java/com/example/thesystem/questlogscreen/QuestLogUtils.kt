@@ -56,7 +56,7 @@ fun QuestListItem(
     val focusRequester = remember { FocusRequester() }
     val focusManager = LocalFocusManager.current
 
-    var timeLeftDisplay by remember(quest.timeOfCreation, quest.isDone) { mutableStateOf("") }
+    var timeLeftDisplay by remember(quest.timeOfCreation, quest.isDone, quest.deadline) { mutableStateOf("") }
 
     LaunchedEffect(quest.isBeingEdited) {
         if (quest.isBeingEdited) {
@@ -64,30 +64,45 @@ fun QuestListItem(
         }
     }
 
-    LaunchedEffect(key1 = quest.timeOfCreation, key2 = quest.isDone, key3 = quest.category) {
-        if (!quest.isDone && (quest.category == QuestCategory.ONE_TIME || quest.category == QuestCategory.DAILY)) {
-            // For a duration of 24 hours:
-            val questDurationMillis = TimeUnit.HOURS.toMillis(24)
+    // Time until deadline
+    LaunchedEffect(quest.timeOfCreation, quest.isDone, quest.deadline, quest.category) {
+        if (!quest.isDone && quest.deadline != null) {
+            val deadlineMillis: Long = quest.deadline
 
             while (true) {
-                val currentTimeInMillis = System.currentTimeMillis()
-                val timeElapsedInMillis = currentTimeInMillis - quest.timeOfCreation
-                var remainingTimeInMillis = questDurationMillis - timeElapsedInMillis
+                val currentTimeMillis = System.currentTimeMillis()
+                val remainingTimeMillis = deadlineMillis - currentTimeMillis
 
-                if (remainingTimeInMillis <= 0) {
-                    timeLeftDisplay = "You failed!"
+                if (remainingTimeMillis <= 0) {
+                    timeLeftDisplay = "Failed quest"
+                    // Call onQuestFailed() here?
                     break
                 }
 
-                // For formatting
-                val hours = TimeUnit.MILLISECONDS.toHours(remainingTimeInMillis)
-                remainingTimeInMillis -= TimeUnit.HOURS.toMillis(hours)
-                val minutes = TimeUnit.MILLISECONDS.toMinutes(remainingTimeInMillis)
-                remainingTimeInMillis -= TimeUnit.MINUTES.toMillis(minutes)
-                val seconds = TimeUnit.MILLISECONDS.toSeconds(remainingTimeInMillis)
+                var tempRemainingTimeMillis = remainingTimeMillis
 
-                timeLeftDisplay = String.format(Locale.getDefault(), "%02d:%02d:%02d", hours, minutes, seconds)
-                delay(1000) // wait for one second
+                val days = TimeUnit.MILLISECONDS.toDays(tempRemainingTimeMillis)
+                if (days > 0)
+                    tempRemainingTimeMillis -= TimeUnit.DAYS.toMillis(days)
+
+                val hours = TimeUnit.MILLISECONDS.toHours(tempRemainingTimeMillis)
+                if (hours > 0)
+                    tempRemainingTimeMillis -= TimeUnit.HOURS.toMillis(hours)
+
+                val minutes = TimeUnit.MILLISECONDS.toMinutes(tempRemainingTimeMillis)
+                if (minutes > 0)
+                    tempRemainingTimeMillis -= TimeUnit.MINUTES.toMillis(minutes)
+
+                val seconds = TimeUnit.MILLISECONDS.toSeconds(remainingTimeMillis)
+
+                timeLeftDisplay = String.format(Locale.getDefault(), "%02dd %02dh %02dm %02ds", days, hours, minutes, seconds)
+                delay(1000)
+
+                // Check if quest was completed during delay
+                if (quest.isDone) {
+                    timeLeftDisplay = "Quest complete"
+                    break
+                }
             }
         } else if (quest.isDone) {
             timeLeftDisplay = "Quest complete"
@@ -196,7 +211,7 @@ fun QuestListItem(
                 Text(
                     text = timeLeftDisplay,
                     style = MaterialTheme.typography.bodySmall,
-                    color = if (timeLeftDisplay == "You failed!") MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
+                    color = if (timeLeftDisplay == "Failed quest") MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         }

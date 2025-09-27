@@ -1,17 +1,15 @@
 package com.example.thesystem.questManagement
 
-import android.R.attr.duration
+import android.icu.util.Calendar
 import android.util.Log
 import android.util.Log.e
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.currentRecomposeScope
 import androidx.compose.runtime.mutableStateOf
 //import androidx.compose.ui.text.intl.Locale
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.thesystem.OverlayViewModel
 import com.example.thesystem.QuestDao
 import com.example.thesystem.QuestEntity
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -24,13 +22,9 @@ import java.util.Locale
 import com.example.thesystem.Overlay
 import kotlinx.coroutines.isActive
 import androidx.compose.runtime.getValue
-import androidx.hilt.navigation.compose.hiltViewModel
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.thesystem.UserStatsDao
 import com.example.thesystem.UserStatsEntity
 import com.example.thesystem.statScreen.StatsScreenUiState
-import com.example.thesystem.statScreen.StatsViewModel
 import com.example.thesystem.xpLogic.QuestCategory
 import com.example.thesystem.xpLogic.calculateAbilityPointsForLevelUp
 import com.example.thesystem.xpLogic.calculateXpForNextLevel
@@ -42,6 +36,7 @@ data class UiQuest(
     val id: String,
     var text: String,
     val duration: Int,
+    val deadline: Long?,
     var isDone: Boolean,
     var hasFailed: Boolean,
     val timeOfCreation: Long,
@@ -56,6 +51,7 @@ fun QuestEntity.toUiQuest(userLevel: Int): UiQuest {
         text = text,
         isDone = isDone,
         duration = duration,
+        deadline = deadline,
         category = category,
         hasFailed = hasFailed,
         timeOfCreation = timeOfCreation
@@ -69,6 +65,7 @@ fun UiQuest.toQuestEntity(): QuestEntity {
         text = text,
         isDone = isDone,
         duration = duration,
+        deadline = deadline,
         category = category,
         hasFailed = hasFailed,
         timeOfCreation = timeOfCreation
@@ -76,7 +73,7 @@ fun UiQuest.toQuestEntity(): QuestEntity {
 }
 
 
-data class QuestManagementUiState(
+data class QuestUiState(
     val quests: List<UiQuest> = emptyList(),
     val isLoading: Boolean = false,
     val showAddQuestDialog: Boolean = false,
@@ -84,6 +81,8 @@ data class QuestManagementUiState(
     val newQuestCategory: QuestCategory = QuestCategory.ONE_TIME,
     val newQuestHours: Int = 0,
     val newQuestMinutes: Int = 0,
+    val deadlineMillis: Long? = null,
+    val showDeadlinePicker: Boolean = false
     // Any other quest-related UI state needed by screens using this VM
 )
 
@@ -93,8 +92,8 @@ class QuestManagementViewModel @Inject constructor(
     private val userStatsDao: UserStatsDao
 ) : ViewModel() {
 
-    private val _uiState = MutableStateFlow(QuestManagementUiState())
-    val uiState: StateFlow<QuestManagementUiState> = _uiState.asStateFlow()
+    private val _uiState = MutableStateFlow(QuestUiState())
+    val uiState: StateFlow<QuestUiState> = _uiState.asStateFlow()
 
     private val _statsUiState = MutableStateFlow(StatsScreenUiState())
     val statsUiState: StateFlow<StatsScreenUiState> = _statsUiState.asStateFlow()
@@ -121,23 +120,6 @@ class QuestManagementViewModel @Inject constructor(
         }
     }
 
-    /*private fun observeUserStatsForLevelUp() {
-        viewModelScope.launch {
-            // .drop(1) is important to avoid a level-up check on app startup.
-            // We only want to check when XP *changes*.
-            userStatsDao.getUserStats()
-                .drop(1)
-                .distinctUntilChanged() { old, new -> old?.currentXp == new?.currentXp }
-                .collect { stats ->
-                if (stats != null) {
-                    // When stats change, check if it caused a level up.
-                    Log.d("Observer", "XP changed to ${stats.currentXp}. Checking for level up.")
-                    checkForLevelUp(stats)
-                }
-            }
-        }
-    }*/
-
     // This is the function the FAB in MainPagerScreen will call
     fun onAddQuestClicked() {
         if (_uiState.value.showAddQuestDialog) return // Avoid re-opening if already open
@@ -149,13 +131,27 @@ class QuestManagementViewModel @Inject constructor(
                 newQuestText = "",
                 newQuestCategory = QuestCategory.ONE_TIME,
                 newQuestHours = 0,
-                newQuestMinutes = 0
+                newQuestMinutes = 0,
+                deadlineMillis = null,
+                showDeadlinePicker = false
             )
         }
     }
 
+    fun onDeadlineSelected(millis: Long?) {
+        _uiState.update { it.copy(deadlineMillis = millis, showDeadlinePicker = false) }
+    }
+
+    fun onShowDeadlinePicker() {
+        _uiState.update { it.copy(showDeadlinePicker = true) }
+    }
+
+    fun onDismissDeadlinePicker() {
+        _uiState.update { it.copy(showDeadlinePicker = false) }
+    }
+
     fun onDismissAddQuestDialog() {
-        _uiState.update { it.copy(showAddQuestDialog = false) }
+        _uiState.update { it.copy(showAddQuestDialog = false, showDeadlinePicker = false) }
     }
 
     fun onNewQuestCategoryChanged(newCategory: QuestCategory) {
@@ -199,6 +195,7 @@ class QuestManagementViewModel @Inject constructor(
                     currentStats.level,
                     currentUiState.newQuestCategory,
                     totalTimeInMinutes),
+                deadline = currentUiState.deadlineMillis,
                 timeOfCreation = currentTime
                 // add deadline (using calendar composable) - only day, always midnight
                 // dynamic countdown = deadline - currentTime
@@ -219,6 +216,13 @@ class QuestManagementViewModel @Inject constructor(
 
             Log.d("onConfirmAddQuest", "Amount of XP to be gained is ${newQuestEntity.xp}")
         }
+    }
+
+    fun formatMillisToDateString(millis: Long?): String {
+        if (millis == null) return "Not Set"
+        val calendar = Calendar.getInstance().apply { timeInMillis = millis }
+        val sdf = SimpleDateFormat("MMM dd, yyyy", Locale.getDefault())
+        return sdf.format(calendar.time)
     }
 
     fun onToggleEditQuest(questId: String) {
@@ -309,7 +313,7 @@ class QuestManagementViewModel @Inject constructor(
             Log.d("QuestManagementVM", "Completed quest. XP is now ${statsWithNewXp.currentXp}")
 
             Log.d("QuestManagementVM", "Delaying before level up check...")
-            delay(2500L)
+            delay(3000L)
 
             val statsAfterQuestCompleted = userStatsDao.getUserStats().first()
             if (statsAfterQuestCompleted != null) {

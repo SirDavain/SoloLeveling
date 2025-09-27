@@ -1,54 +1,57 @@
 package com.example.thesystem.addquestdialog
 
-import android.R.attr.enabled
-import android.util.Log
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.forEach
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material3.Button
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import com.example.thesystem.questlogscreen.capitalizeWords
-import com.example.thesystem.xpLogic.QuestCategory
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.example.thesystem.QuestDurationWheelPicker
-import com.example.thesystem.questManagement.QuestManagementViewModel
+import com.example.thesystem.questManagement.QuestUiState
 import com.example.thesystem.questlogscreen.QuestCategoryDropdown
+import com.example.thesystem.xpLogic.QuestCategory
+import java.text.SimpleDateFormat
+import java.util.Calendar
+import java.util.Locale
+import java.util.TimeZone
+import androidx.compose.material3.SelectableDates
+
+fun formatMillisToDisplayDate(millis: Long?, defaultText: String = "Select Deadline"): String {
+    if (millis == null) return defaultText
+
+    val calendar = Calendar.getInstance(TimeZone.getTimeZone("UTC"))
+    calendar.timeInMillis = millis
+
+    val sdf = SimpleDateFormat("dd.mm.yyyy", Locale.getDefault())
+    sdf.timeZone = TimeZone.getDefault() // Display in local timezone
+    return sdf.format(calendar.time)
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -58,13 +61,58 @@ fun AddQuestFullScreenContent(
     currentQuestCategory: QuestCategory,
     currentHours: Int,
     currentMinutes: Int,
+    deadlineMillis: Long?,
+    showDeadlinePicker: Boolean,
     onQuestTextChanged: (String) -> Unit,
     onCategoryChanged: (QuestCategory) -> Unit,
     onHoursChanged: (Int) -> Unit,
     onMinutesChanged: (Int) -> Unit,
+    onDeadlineSelected: (Long?) -> Unit,
+    onShowDeadlinePicker: () -> Unit,
+    onDismissDeadlinePicker: () -> Unit,
     onConfirm: () -> Unit,
     onDismiss: () -> Unit
 ) {
+    val context = LocalContext.current
+
+    if (showDeadlinePicker) {
+        val todayUtcMillis = Calendar.getInstance(TimeZone.getTimeZone("UTC")).apply {
+            set(Calendar.HOUR_OF_DAY, 0)
+            set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
+        }.timeInMillis
+
+        val datePickerState = rememberDatePickerState(
+            initialSelectedDateMillis = deadlineMillis ?: System.currentTimeMillis(),
+            selectableDates = object : SelectableDates {
+                override fun isSelectableDate(utcTimeMillis: Long): Boolean {
+                    return utcTimeMillis >= todayUtcMillis
+                }
+            }
+        )
+
+        DatePickerDialog(
+            onDismissRequest = onDismissDeadlinePicker,
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        onDeadlineSelected(datePickerState.selectedDateMillis)
+                    }
+                ) {
+                    Text("OK")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = onDismissDeadlinePicker) {
+                    Text("Cancel")
+                }
+            }
+        ) {
+            DatePicker(state = datePickerState)
+        }
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -124,27 +172,43 @@ fun AddQuestFullScreenContent(
                 onMinutesChanged = onMinutesChanged,
             )
             Spacer(Modifier.height(24.dp))
+
+            Text("Quest Deadline:", style = MaterialTheme.typography.titleMedium)
+
+            Spacer(Modifier.height(8.dp))
+
+            Button(
+                onClick = onShowDeadlinePicker,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(formatMillisToDisplayDate(deadlineMillis))
+            }
         }
     }
 }
 
 @Composable
 fun AddQuestFullScreenDialog(
-    showDialog: Boolean,
+    // showDialog: Boolean,
+    // showDeadlinePicker: Boolean,
     // Current values from ViewModel UiState
-    currentQuestText: String,
-    currentCategory: QuestCategory,
-    currentHours: Int,
-    currentMinutes: Int,
-    // Callbacks to ViewModel methods
+    // currentQuestText: String,
+    // currentCategory: QuestCategory,
+    // currentHours: Int,
+    // currentMinutes: Int,
+    // deadlineMillis: Long?,
+    dialogUiState: QuestUiState,
     onQuestTextChanged: (String) -> Unit,
     onCategoryChanged: (QuestCategory) -> Unit,
     onHoursChanged: (Int) -> Unit,
     onMinutesChanged: (Int) -> Unit,
+    onDeadlineSelected: (Long?) -> Unit,
+    onShowDeadlinePicker: () -> Unit,
+    onDismissDeadlinePicker: () -> Unit,
     onConfirm: () -> Unit, // call to ViewModel's onConfirmAddQuest
     onDismiss: () -> Unit // call to ViewModel's onDismissAddQuestDialog
 ) {
-    if (showDialog) {
+    if (dialogUiState.showAddQuestDialog) {
         Dialog(
             onDismissRequest = onDismiss,
             properties = DialogProperties(
@@ -161,16 +225,21 @@ fun AddQuestFullScreenDialog(
                 // Or RectangleShape for no rounding if true edge-to-edge
             ) {
                 AddQuestFullScreenContent(
-                    currentQuestText = currentQuestText,
-                    currentQuestCategory = currentCategory,
-                    currentHours = currentHours,
-                    currentMinutes = currentMinutes,
+                    currentQuestText = dialogUiState.newQuestText,
+                    currentQuestCategory = dialogUiState.newQuestCategory,
+                    currentHours = dialogUiState.newQuestHours,
+                    currentMinutes = dialogUiState.newQuestMinutes,
+                    deadlineMillis = dialogUiState.deadlineMillis,
+                    showDeadlinePicker = dialogUiState.showDeadlinePicker,
                     onQuestTextChanged = onQuestTextChanged,
                     onCategoryChanged = onCategoryChanged,
                     onHoursChanged = onHoursChanged,
                     onMinutesChanged = onMinutesChanged,
-                    onConfirm = onConfirm, // Pass the confirm action
-                    onDismiss = onDismiss // Pass the dismiss action
+                    onDeadlineSelected = onDeadlineSelected,
+                    onShowDeadlinePicker = onShowDeadlinePicker,
+                    onDismissDeadlinePicker = onDismissDeadlinePicker,
+                    onConfirm = onConfirm,
+                    onDismiss = onDismiss
                 )
             }
         }
