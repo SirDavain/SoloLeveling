@@ -48,7 +48,7 @@ fun formatMillisToDisplayDate(millis: Long?, defaultText: String = "Select Deadl
     val calendar = Calendar.getInstance(TimeZone.getTimeZone("UTC"))
     calendar.timeInMillis = millis
 
-    val sdf = SimpleDateFormat("dd.mm.yyyy", Locale.getDefault())
+    val sdf = SimpleDateFormat("dd.MM.yyyy", Locale.getDefault())
     sdf.timeZone = TimeZone.getDefault() // Display in local timezone
     return sdf.format(calendar.time)
 }
@@ -189,14 +189,6 @@ fun AddQuestFullScreenContent(
 
 @Composable
 fun AddQuestFullScreenDialog(
-    // showDialog: Boolean,
-    // showDeadlinePicker: Boolean,
-    // Current values from ViewModel UiState
-    // currentQuestText: String,
-    // currentCategory: QuestCategory,
-    // currentHours: Int,
-    // currentMinutes: Int,
-    // deadlineMillis: Long?,
     dialogUiState: QuestUiState,
     onQuestTextChanged: (String) -> Unit,
     onCategoryChanged: (QuestCategory) -> Unit,

@@ -75,27 +75,29 @@ fun QuestListItem(
 
                 if (remainingTimeMillis <= 0) {
                     timeLeftDisplay = "Failed quest"
-                    // Call onQuestFailed() here?
                     break
                 }
 
-                var tempRemainingTimeMillis = remainingTimeMillis
+                var remainder = remainingTimeMillis // Start with the total remaining milliseconds
 
-                val days = TimeUnit.MILLISECONDS.toDays(tempRemainingTimeMillis)
-                if (days > 0)
-                    tempRemainingTimeMillis -= TimeUnit.DAYS.toMillis(days)
+                val days = TimeUnit.MILLISECONDS.toDays(remainder)
+                remainder -= TimeUnit.DAYS.toMillis(days) // Subtract the milliseconds accounted for by full days
 
-                val hours = TimeUnit.MILLISECONDS.toHours(tempRemainingTimeMillis)
-                if (hours > 0)
-                    tempRemainingTimeMillis -= TimeUnit.HOURS.toMillis(hours)
+                val hours = TimeUnit.MILLISECONDS.toHours(remainder)
+                remainder -= TimeUnit.HOURS.toMillis(hours) // Subtract the milliseconds accounted for by full hours
 
-                val minutes = TimeUnit.MILLISECONDS.toMinutes(tempRemainingTimeMillis)
-                if (minutes > 0)
-                    tempRemainingTimeMillis -= TimeUnit.MINUTES.toMillis(minutes)
+                val minutes = TimeUnit.MILLISECONDS.toMinutes(remainder)
+                remainder -= TimeUnit.MINUTES.toMillis(minutes) // Subtract the milliseconds accounted for by full minutes
 
-                val seconds = TimeUnit.MILLISECONDS.toSeconds(remainingTimeMillis)
+                val seconds = TimeUnit.MILLISECONDS.toSeconds(remainder)
+                // No need to subtract seconds from remainder if you're not going to milliseconds
 
-                timeLeftDisplay = String.format(Locale.getDefault(), "%02dd %02dh %02dm %02ds", days, hours, minutes, seconds)
+                // Ensure formatting uses the calculated components, not the total remaining time for seconds
+                timeLeftDisplay = if (days > 0)
+                    String.format(Locale.getDefault(), "%02dd %02dh %02dm %02ds", days, hours, minutes, seconds)
+                else
+                    String.format(Locale.getDefault(), "%02dh %02dm %02ds", hours, minutes, seconds)
+
                 delay(1000)
 
                 // Check if quest was completed during delay
