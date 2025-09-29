@@ -80,8 +80,8 @@ fun QuestListItem(
                 if (remainingTimeMillis <= 0) {
                     timeLeftDisplay = "Failed quest"
                     if (!quest.hasFailed) {
-                        val failedQuest = quest.copy(hasFailed = true)
-                        onQuestFailed(failedQuest, "fail")
+                        onQuestFailed(quest.id)
+                        // Show overlay for failing a quest
                     }
                     break
                 }
@@ -146,7 +146,7 @@ fun QuestListItem(
         RadioButton(
             selected = quest.isDone,
             onClick = onDoneChange,
-            enabled = !quest.isBeingEdited, // Disable when editing text
+            enabled = !quest.isBeingEdited && !quest.hasFailed, // Disable when editing text or if it has failed
             colors = RadioButtonDefaults.colors(
                 selectedColor = MaterialTheme.colorScheme.primary,
                 unselectedColor = MaterialTheme.colorScheme.onSurfaceVariant

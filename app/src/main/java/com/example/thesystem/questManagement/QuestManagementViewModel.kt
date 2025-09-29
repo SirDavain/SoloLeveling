@@ -3,6 +3,7 @@ package com.example.thesystem.questManagement
 import android.icu.util.Calendar
 import android.util.Log
 import android.util.Log.e
+import androidx.compose.animation.core.copy
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -24,6 +25,7 @@ import kotlinx.coroutines.isActive
 import androidx.compose.runtime.getValue
 import com.example.thesystem.UserStatsDao
 import com.example.thesystem.UserStatsEntity
+import com.example.thesystem.animations.QuestFailedAnimationOverlay
 import com.example.thesystem.statScreen.StatsScreenUiState
 import com.example.thesystem.xpLogic.QuestCategory
 import com.example.thesystem.xpLogic.calculateAbilityPointsForLevelUp
@@ -436,6 +438,29 @@ class QuestManagementViewModel @Inject constructor(
                 }
             userStatsDao.updateUserStats(statsWithNewXp)
             Log.d("QuestManagementVM", "Failed quest. XP is now ${statsWithNewXp.currentXp}")
+        }
+    }
+
+    fun markQuestAsFailedInDB(questId: String) {
+        viewModelScope.launch {
+            val questToUpdate = questDao.getQuestById(questId)
+            if (questToUpdate != null) {
+                if (!questToUpdate.hasFailed) {
+                    Log.d("QuestVM", "Marking quest $questId as failed in DB.")
+                    val updatedQuestEntity = questToUpdate.copy(hasFailed = true, isDone = false)
+                    questDao.updateQuest(updatedQuestEntity)
+                    overlayCoordinator?.showOverlay(
+                        Overlay.QuestFailed(
+                            questText = questToUpdate.text,
+                            penaltyXp = questToUpdate.xp / 2
+                        )
+                    )
+                } else {
+                    Log.d("QuestVM", "Quest $questId was already marked as failed.")
+                }
+            } else {
+                e("QuestVM", "Could not find quest with ID $questId to mark as failed.")
+            }
         }
     }
 

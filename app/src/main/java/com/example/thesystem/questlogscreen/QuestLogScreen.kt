@@ -97,9 +97,7 @@ fun QuestLogScreen(
                                         onToggleEdit = { questViewModel.onToggleEditQuest(quest.id) },
                                         onSaveEdit = { questViewModel.onSaveQuestEdit(quest.id) },
                                         onDelete = { questViewModel.onDeleteQuest(quest.id) },
-                                        onQuestFailed = { questId ->
-                                            questViewModel.updateQuestInDB(quest.id, "fail")
-                                        }
+                                        onQuestFailed = { questViewModel.markQuestAsFailedInDB(quest.id) }
                                     )
                                     HorizontalDivider(
                                         Modifier,
