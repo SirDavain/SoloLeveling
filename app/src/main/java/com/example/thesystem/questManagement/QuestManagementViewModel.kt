@@ -364,7 +364,7 @@ class QuestManagementViewModel @Inject constructor(
 
     }
 
-    @Composable
+    /*@Composable
     fun CheckAndFailOverdueQuests() {
         val questsState by uiState.collectAsState()
         val currentQuests: List<UiQuest> = questsState.quests
@@ -377,12 +377,12 @@ class QuestManagementViewModel @Inject constructor(
                     val durationInMillis = quest.duration * 60 * 1000L // getQuestDurationMillis(quest.category)
                     if (durationInMillis > 0 && (System.currentTimeMillis() - quest.timeOfCreation) > durationInMillis) {
                         val penalty = quest.xp / 2
-                        val updatedQuest = quest.copy(hasFailed = true)
-                        updateQuestInDB(updatedQuest.toQuestEntity())
+                        // val updatedQuest = quest.copy(hasFailed = true)
+                        updateQuestInDB(quest.id, "fail")
 
                         overlayCoordinator?.showOverlay(
                             Overlay.QuestFailed(
-                                questText = updatedQuest.text,
+                                questText = quest.text,
                                 penaltyXp = penalty
                             )
                         )
@@ -392,11 +392,70 @@ class QuestManagementViewModel @Inject constructor(
                 delay(60000L)
             }
         }
+    }*/
+
+    // Run a check for failed quests at midnight every day
+    @Composable
+    fun CheckForFailedQuests() {
+        val questState by uiState.collectAsState()
+        val currentQuests: List<UiQuest> = questState.quests
+
+        LaunchedEffect(Unit) {
+            while (isActive) {
+                Log.d("FailedCheck", "Checking for failed quests.")
+                currentQuests.filter { it.hasFailed }.forEach { quest ->
+                    val penalty = quest.xp / 2
+
+                    overlayCoordinator?.showOverlay(
+                        Overlay.QuestFailed(
+                            questText = quest.text,
+                            penaltyXp = penalty
+                        )
+                    )
+                    // Subtract the lost XP
+                    subtractXpForFailedQuest(penalty)
+                }
+            }
+        }
     }
 
-    private fun updateQuestInDB(questEntity: QuestEntity) {
+    fun subtractXpForFailedQuest(xpLost: Int) {
         viewModelScope.launch {
-            questDao.updateQuest(questEntity)
+            val currentStats = userStatsDao.getUserStats().first()
+            if (currentStats == null) {
+                e("QuestManagementVM", "Attempted to decrease XP but stats aren't loaded.")
+                return@launch
+            }
+
+            // Calculate new XP and update the Database
+            val statsWithNewXp =
+                if (currentStats.currentXp < xpLost) {
+                    currentStats.copy(currentXp = 0)
+                } else {
+                    currentStats.copy(currentXp = currentStats.currentXp - xpLost)
+                }
+            userStatsDao.updateUserStats(statsWithNewXp)
+            Log.d("QuestManagementVM", "Failed quest. XP is now ${statsWithNewXp.currentXp}")
+        }
+    }
+
+    fun updateQuestInDB(questId: String, flag: String) {
+        viewModelScope.launch {
+            // val questToUpdate = questDao.getQuestById(questId)
+            val questToUpdate = _uiState.value.quests.find { it.id == questId }
+            if (questToUpdate == null) {
+                e("QuestVM", "updateQuestInDB: Quest with ID $questId not found.")
+                return@launch
+            }
+            if (flag == "fail") {
+                if (!questToUpdate.hasFailed) {
+                    Log.d("QuestVM", "Marking quest $questId as failed in DB.")
+                    questDao.updateQuest(
+                        questToUpdate.copy(isDone = false, hasFailed = true).toQuestEntity()
+                    )
+                } else
+                    Log.d("QuestVM", "Quest $questId was already marked as failed.")
+            }
         }
     }
 }

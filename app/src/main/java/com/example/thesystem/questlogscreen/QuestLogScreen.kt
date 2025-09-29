@@ -34,6 +34,7 @@ import com.example.thesystem.questManagement.QuestManagementViewModel
 import com.example.thesystem.xpLogic.QuestCategory
 import androidx.compose.runtime.setValue
 import com.example.thesystem.addquestdialog.AddQuestFullScreenDialog
+import com.example.thesystem.questManagement.toQuestEntity
 
 // This is where the magic happens:
 // Displays your current "quests" (habits and routines you set yourself)
@@ -95,7 +96,10 @@ fun QuestLogScreen(
                                         },
                                         onToggleEdit = { questViewModel.onToggleEditQuest(quest.id) },
                                         onSaveEdit = { questViewModel.onSaveQuestEdit(quest.id) },
-                                        onDelete = { questViewModel.onDeleteQuest(quest.id) }
+                                        onDelete = { questViewModel.onDeleteQuest(quest.id) },
+                                        onQuestFailed = { questId ->
+                                            questViewModel.updateQuestInDB(quest.id, "fail")
+                                        }
                                     )
                                     HorizontalDivider(
                                         Modifier,
@@ -146,24 +150,3 @@ fun QuestLogScreen(
 
 // Helper to capitalize words for category titles
 fun String.capitalizeWords(): String = split(" ").joinToString(" ") { it.lowercase().replaceFirstChar(Char::titlecase) }
-
-/*
-@Preview
-@Composable
-fun QuestLogScreenPreview () {
-    val previewViewModel = QuestManagementViewModel(questDao = QuestDao).apply {
-        //uses default values
-    }
-    SoloLevelingApplicationTheme {
-        Box(
-            modifier = Modifier
-                .padding(bottom = 16.dp, top = 16.dp)
-        ) {
-            QuestLogScreen(
-                navController = rememberNavController(),
-                questViewModel = previewViewModel
-            )
-        }
-    }
-
-}*/

@@ -36,8 +36,11 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.style.TextDecoration
+import com.example.thesystem.Overlay
 import com.example.thesystem.QuestDurationWheelPicker
+import com.example.thesystem.questManagement.QuestManagementViewModel
 import com.example.thesystem.questManagement.UiQuest
+import com.example.thesystem.questManagement.toQuestEntity
 import com.example.thesystem.xpLogic.QuestCategory
 import java.util.Locale
 import java.util.concurrent.TimeUnit
@@ -51,7 +54,8 @@ fun QuestListItem(
     onTextChange: (String) -> Unit,
     onToggleEdit: () -> Unit,
     onSaveEdit: () -> Unit,
-    onDelete: () -> Unit
+    onDelete: () -> Unit,
+    onQuestFailed: (questId: String) -> Unit
 ) {
     val focusRequester = remember { FocusRequester() }
     val focusManager = LocalFocusManager.current
@@ -75,6 +79,10 @@ fun QuestListItem(
 
                 if (remainingTimeMillis <= 0) {
                     timeLeftDisplay = "Failed quest"
+                    if (!quest.hasFailed) {
+                        val failedQuest = quest.copy(hasFailed = true)
+                        onQuestFailed(failedQuest, "fail")
+                    }
                     break
                 }
 
@@ -108,6 +116,8 @@ fun QuestListItem(
             }
         } else if (quest.isDone) {
             timeLeftDisplay = "Quest complete"
+        } else if (quest.hasFailed) {
+            timeLeftDisplay = "Failed quest"
         } else {
             timeLeftDisplay = ""
         }
