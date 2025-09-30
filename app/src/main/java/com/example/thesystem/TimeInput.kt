@@ -30,49 +30,6 @@ import com.example.thesystem.generalUtils.DURATION_HOURS_RANGE
 import com.example.thesystem.generalUtils.DURATION_MINUTES_RANGE
 import com.example.thesystem.generalUtils.ScrollablePickerColumn
 
-/*@Composable
-fun QuestDurationWheelDialog(
-    modifier: Modifier = Modifier,
-    initialHours: Int = 0,
-    initialMinutes: Int = 0,
-    onDurationChange: (hours: Int, minutes: Int) -> Unit
-) {
-    val validInitialMinutes = remember(initialMinutes) {
-        DURATION_MINUTES_RANGE.find { it == initialMinutes } ?: DURATION_MINUTES_RANGE.first()
-    }
-
-    val showDialog = remember { mutableStateOf(false) }
-
-    var selectedHours by remember { mutableIntStateOf(initialHours) }
-    var selectedMinutes by remember { mutableIntStateOf(validInitialMinutes) }
-
-    LaunchedEffect(selectedHours, selectedMinutes) {
-        onDurationChange(selectedHours, selectedMinutes)
-    }
-    if (showDialog.value) {
-        AlertDialog(
-            onDismissRequest = {
-                showDialog.value = false
-            },
-            title = { Text("Pick your quest's duration:") },
-            text = {
-
-            },
-            confirmButton = TODO(),
-            modifier = TODO(),
-            dismissButton = TODO(),
-            icon = TODO(),
-            shape = TODO(),
-            containerColor = TODO(),
-            iconContentColor = TODO(),
-            titleContentColor = TODO(),
-            textContentColor = TODO(),
-            tonalElevation = TODO(),
-            properties = TODO()
-        )
-    }
-}*/
-
 @Composable
 fun QuestDurationWheelPicker(
     modifier: Modifier = Modifier,

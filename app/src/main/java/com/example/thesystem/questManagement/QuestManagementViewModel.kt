@@ -1,6 +1,5 @@
 package com.example.thesystem.questManagement
 
-import android.icu.util.Calendar
 import android.util.Log
 import android.util.Log.e
 import androidx.compose.animation.core.copy
@@ -32,6 +31,9 @@ import com.example.thesystem.xpLogic.calculateAbilityPointsForLevelUp
 import com.example.thesystem.xpLogic.calculateXpForNextLevel
 import com.example.thesystem.xpLogic.calculateXpForQuest
 import kotlinx.coroutines.delay
+import java.util.Calendar
+import java.util.TimeZone
+import java.util.concurrent.TimeUnit
 
 data class UiQuest(
     var xp: Int,
@@ -83,6 +85,7 @@ data class QuestUiState(
     val newQuestCategory: QuestCategory = QuestCategory.ONE_TIME,
     val newQuestHours: Int = 0,
     val newQuestMinutes: Int = 0,
+    val newQuestUserSelectedDate: Long? = null,
     val deadlineMillis: Long? = null,
     val showDeadlinePicker: Boolean = false
     // Any other quest-related UI state needed by screens using this VM
@@ -140,8 +143,29 @@ class QuestManagementViewModel @Inject constructor(
         }
     }
 
+    // Deadline is converted to the chosen day at midnight
     fun onDeadlineSelected(millis: Long?) {
-        _uiState.update { it.copy(deadlineMillis = millis, showDeadlinePicker = false) }
+        if (millis == null) {
+            _uiState.update {
+                it.copy(
+                    newQuestUserSelectedDate = null,
+                    deadlineMillis = null,
+                    showDeadlinePicker = false
+                )
+            }
+            return
+        }
+
+        val oneDayInMillis = TimeUnit.DAYS.toMillis(1)
+        val deadlineToStore = millis + oneDayInMillis
+
+        _uiState.update {
+            it.copy(
+            newQuestUserSelectedDate = millis,
+            deadlineMillis = deadlineToStore,
+            showDeadlinePicker = false
+            )
+        }
     }
 
     fun onShowDeadlinePicker() {
@@ -199,8 +223,6 @@ class QuestManagementViewModel @Inject constructor(
                     totalTimeInMinutes),
                 deadline = currentUiState.deadlineMillis,
                 timeOfCreation = currentTime
-                // add deadline (using calendar composable) - only day, always midnight
-                // dynamic countdown = deadline - currentTime
             )
             questDao.insertQuest(newQuestEntity)
 
@@ -218,13 +240,6 @@ class QuestManagementViewModel @Inject constructor(
 
             Log.d("onConfirmAddQuest", "Amount of XP to be gained is ${newQuestEntity.xp}")
         }
-    }
-
-    fun formatMillisToDateString(millis: Long?): String {
-        if (millis == null) return "Not Set"
-        val calendar = Calendar.getInstance().apply { timeInMillis = millis }
-        val sdf = SimpleDateFormat("MMM dd, yyyy", Locale.getDefault())
-        return sdf.format(calendar.time)
     }
 
     fun onToggleEditQuest(questId: String) {
@@ -327,6 +342,42 @@ class QuestManagementViewModel @Inject constructor(
         }
     }
 
+    // New function to be triggered when a quest fails
+    fun onQuestFailed(questId: String) {
+        viewModelScope.launch {
+            val failedQuest = _uiState.value.quests.find { it.id == questId }
+            if (failedQuest == null) {
+                e("QuestManagementVM", "onQuestFailed: Quest with ID $questId not found.")
+                return@launch
+            }
+
+            // Show QuestCompleted Overlay
+            overlayCoordinator?.showOverlay(
+                Overlay.QuestFailed(
+                    questText = failedQuest.text,
+                    penaltyXp = failedQuest.xp / 2
+                )
+            )
+
+            questDao.updateQuest(
+                failedQuest.copy(isDone = false, hasFailed = true).toQuestEntity()
+            )
+
+            val currentStats = userStatsDao.getUserStats().first()
+            if (currentStats == null) {
+                e("QuestManagementVM", "Attempted to decrease XP but stats aren't loaded.")
+                return@launch
+            }
+
+            // Calculate new XP and update the Database
+            val statsWithNewXp = currentStats.copy(
+                currentXp = currentStats.currentXp - (failedQuest.xp / 2)
+            )
+            userStatsDao.updateUserStats(statsWithNewXp)
+            Log.d("QuestManagementVM", "Failed quest. XP is now ${statsWithNewXp.currentXp}")
+        }
+    }
+
     private fun checkForLevelUp(stats: UserStatsEntity) {
         var currentStats = stats.copy()
         var hasLeveledUp = false
@@ -366,36 +417,6 @@ class QuestManagementViewModel @Inject constructor(
 
     }
 
-    /*@Composable
-    fun CheckAndFailOverdueQuests() {
-        val questsState by uiState.collectAsState()
-        val currentQuests: List<UiQuest> = questsState.quests
-
-        LaunchedEffect(Unit) {
-            while (isActive) {
-                Log.d("OverdueCheck", "Checking for overdue quests.")
-                val currentTime = System.currentTimeMillis()
-                currentQuests.filter { !it.isDone && !it.hasFailed }.forEach { quest ->
-                    val durationInMillis = quest.duration * 60 * 1000L // getQuestDurationMillis(quest.category)
-                    if (durationInMillis > 0 && (System.currentTimeMillis() - quest.timeOfCreation) > durationInMillis) {
-                        val penalty = quest.xp / 2
-                        // val updatedQuest = quest.copy(hasFailed = true)
-                        updateQuestInDB(quest.id, "fail")
-
-                        overlayCoordinator?.showOverlay(
-                            Overlay.QuestFailed(
-                                questText = quest.text,
-                                penaltyXp = penalty
-                            )
-                        )
-                        // TODO: actually subtract the lost XP
-                    }
-                }
-                delay(60000L)
-            }
-        }
-    }*/
-
     // Run a check for failed quests at midnight every day
     @Composable
     fun CheckForFailedQuests() {
@@ -423,7 +444,7 @@ class QuestManagementViewModel @Inject constructor(
 
     fun subtractXpForFailedQuest(xpLost: Int) {
         viewModelScope.launch {
-            val currentStats = userStatsDao.getUserStats().first()
+            var currentStats = userStatsDao.getUserStats().first()
             if (currentStats == null) {
                 e("QuestManagementVM", "Attempted to decrease XP but stats aren't loaded.")
                 return@launch

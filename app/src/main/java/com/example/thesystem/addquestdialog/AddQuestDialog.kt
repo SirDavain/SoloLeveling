@@ -61,6 +61,7 @@ fun AddQuestFullScreenContent(
     currentQuestCategory: QuestCategory,
     currentHours: Int,
     currentMinutes: Int,
+    userSelectedDate: Long?,
     deadlineMillis: Long?,
     showDeadlinePicker: Boolean,
     onQuestTextChanged: (String) -> Unit,
@@ -73,7 +74,6 @@ fun AddQuestFullScreenContent(
     onConfirm: () -> Unit,
     onDismiss: () -> Unit
 ) {
-    val context = LocalContext.current
 
     if (showDeadlinePicker) {
         val todayUtcMillis = Calendar.getInstance(TimeZone.getTimeZone("UTC")).apply {
@@ -181,7 +181,7 @@ fun AddQuestFullScreenContent(
                 onClick = onShowDeadlinePicker,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Text(formatMillisToDisplayDate(deadlineMillis))
+                Text(formatMillisToDisplayDate(userSelectedDate))
             }
         }
     }
@@ -222,6 +222,7 @@ fun AddQuestFullScreenDialog(
                     currentHours = dialogUiState.newQuestHours,
                     currentMinutes = dialogUiState.newQuestMinutes,
                     deadlineMillis = dialogUiState.deadlineMillis,
+                    userSelectedDate = dialogUiState.newQuestUserSelectedDate,
                     showDeadlinePicker = dialogUiState.showDeadlinePicker,
                     onQuestTextChanged = onQuestTextChanged,
                     onCategoryChanged = onCategoryChanged,

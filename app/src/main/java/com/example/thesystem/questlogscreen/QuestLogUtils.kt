@@ -81,7 +81,6 @@ fun QuestListItem(
                     timeLeftDisplay = "Failed quest"
                     if (!quest.hasFailed) {
                         onQuestFailed(quest.id)
-                        // Show overlay for failing a quest
                     }
                     break
                 }
@@ -196,7 +195,7 @@ fun QuestListItem(
                         }) {
                             Icon(Icons.Filled.Close, "Cancel edit")
                         }
-                        if (quest.isDone) {
+                        if (quest.isDone || quest.hasFailed) {
                             IconButton(onClick = {
                                 onDelete() // Delete a completed quest
                                 focusManager.clearFocus()
