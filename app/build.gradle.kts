@@ -72,7 +72,8 @@ dependencies {
     }
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
-    implementation(libs.protolite.well.known.types) // For coroutines and Flow support
+    implementation(libs.protolite.well.known.types)
+    implementation(libs.firebase.components) // For coroutines and Flow support
     ksp(libs.androidx.room.compiler) // Use ksp for the Room compiler
     implementation(libs.androidx.multidex)
     implementation(libs.androidx.work.runtime.ktx)
