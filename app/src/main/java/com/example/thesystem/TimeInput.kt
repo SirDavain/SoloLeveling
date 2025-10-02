@@ -26,15 +26,18 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.example.thesystem.generalUtils.BOSS_DURATION_HOURS_RANGE
 import com.example.thesystem.generalUtils.DURATION_HOURS_RANGE
 import com.example.thesystem.generalUtils.DURATION_MINUTES_RANGE
 import com.example.thesystem.generalUtils.ScrollablePickerColumn
+import com.example.thesystem.xpLogic.QuestCategory
 
 @Composable
 fun QuestDurationWheelPicker(
     modifier: Modifier = Modifier,
     currentHours: Int,
     currentMinutes: Int,
+    currentCategory: QuestCategory,
     onHoursChanged: (hours: Int) -> Unit,
     onMinutesChanged: (minutes: Int) -> Unit,
 ) {
@@ -43,6 +46,9 @@ fun QuestDurationWheelPicker(
         DURATION_MINUTES_RANGE.find { it == currentMinutes } ?: DURATION_MINUTES_RANGE.first()
     }
 
+    val isBossQuest = currentCategory == QuestCategory.BOSS
+
+
     Row(
         modifier = modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
@@ -50,7 +56,7 @@ fun QuestDurationWheelPicker(
     ) {
         ScrollablePickerColumn(
             modifier = Modifier.weight(1f),
-            items = DURATION_HOURS_RANGE,
+            items = if (isBossQuest) BOSS_DURATION_HOURS_RANGE else DURATION_HOURS_RANGE,
             currentValue = currentHours,
             onValueSelected = onHoursChanged,
             label = "Hours"
@@ -85,6 +91,7 @@ fun QuestDurationWheelPickerPreview() {
                 QuestDurationWheelPicker(
                     currentHours = hours,
                     currentMinutes = minutes,
+                    currentCategory = QuestCategory.ONE_TIME,
                     onHoursChanged = { h -> hours = h },
                     onMinutesChanged = { m -> minutes = m }
                 )

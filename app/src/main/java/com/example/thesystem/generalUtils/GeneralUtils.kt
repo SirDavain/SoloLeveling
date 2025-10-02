@@ -53,8 +53,10 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filter
 import kotlin.math.abs
 
-val DURATION_HOURS_RANGE = (0..12).toList()
+val DURATION_HOURS_RANGE = (0..15).toList()
 val DURATION_MINUTES_RANGE = (0..55 step 5).toList()
+
+val BOSS_DURATION_HOURS_RANGE = (16 .. 48).toList()
 
 @Composable
 fun ScrollablePickerColumn(

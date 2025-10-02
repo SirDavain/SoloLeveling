@@ -8,6 +8,7 @@ import androidx.work.WorkerParameters
 import com.example.thesystem.QuestDao
 import com.example.thesystem.QuestEntity
 import com.example.thesystem.UserStatsDao // If needed for XP penalties
+import com.example.thesystem.workers.QuestWorker.Companion.WORK_NAME
 import com.example.thesystem.xpLogic.QuestCategory
 import com.example.thesystem.xpLogic.calculateXpForQuest
 import dagger.assisted.Assisted
@@ -28,7 +29,7 @@ class QuestWorker @AssistedInject constructor(
 ) : CoroutineWorker(appContext, workerParams) {
 
     companion object {
-        const val WORK_NAME = "FailedQuestCheckWorker"
+        const val WORK_NAME = "QuestResetWorker"
     }
 
     override suspend fun doWork(): Result {
@@ -42,48 +43,92 @@ class QuestWorker @AssistedInject constructor(
 
             val allQuests = questDao.getAllQuests().first() // Get all quest entities
             val currentTime = System.currentTimeMillis()
+            val questsToDelete = mutableListOf<QuestEntity>()
+            val questsToAdd = mutableListOf<QuestEntity>()
 
-            allQuests.filter { it.isDone || it.hasFailed } // Only check completed or failed quests
-                .forEach { questEntity ->
-                    when (questEntity.category.name) {
-                        "ONE_TIME", "BOSS" -> {
-                            questDao.deleteQuest(questEntity)
+            Log.d(WORK_NAME, "Current Time for check: $currentTime")
+
+            allQuests
+                .filter { questEntity ->
+                    val isTerminated = questEntity.isDone || questEntity.hasFailed
+
+                    val deadlineIsOver = questEntity.deadline?.let { deadlineTime ->
+                        val passed = deadlineTime <= currentTime
+                        if (passed) {
+                            Log.d(WORK_NAME, "Quest '${questEntity.text}' (ID: ${questEntity.id}) deadline $deadlineTime passed at $currentTime.")
+                        } else {
+                            Log.d(WORK_NAME, "Quest '${questEntity.text}' (ID: ${questEntity.id}) deadline $deadlineTime NOT passed at $currentTime.")
                         }
-                        "DAILY" -> {
-                            // Delete old quest after XP was added/removed and replace with a new one
+                        passed
+                    } ?: false
+
+                    // Quest should be processed if it's terminated AND its deadline has passed
+                    val shouldProcess = isTerminated && deadlineIsOver
+                    if (shouldProcess) {
+                        Log.d(WORK_NAME, "Quest '${questEntity.text}' (ID: ${questEntity.id}) marked for processing. isDone=${questEntity.isDone}, hasFailed=${questEntity.hasFailed}")
+                    }
+                    shouldProcess
+                }
+                .forEach { questEntityToProcess ->
+                    Log.d(WORK_NAME, "Processing quest: ${questEntityToProcess.text} (Category: ${questEntityToProcess.category})")
+                    when (questEntityToProcess.category) {
+                        QuestCategory.ONE_TIME, QuestCategory.BOSS -> {
+                            questsToDelete.add(questEntityToProcess)
+                            Log.d(WORK_NAME, "ONE_TIME/BOSS quest '${questEntityToProcess.text}' added for deletion.")
+                        }
+                        QuestCategory.DAILY -> {
+                            // Delete old daily quest after XP was added/removed and replace with a new one
                             val newDailyQuest = QuestEntity(
                                 id = UUID.randomUUID().toString(),
-                                text = questEntity.text,
+                                text = questEntityToProcess.text,
                                 isDone = false,
                                 hasFailed = false,
                                 category = QuestCategory.DAILY,
                                 timeOfCreation = currentTime,
-                                duration = questEntity.duration,
-                                xp = calculateXpForQuest(currentStats.level, questEntity.category, questEntity.duration),
+                                duration = questEntityToProcess.duration,
+                                xp = calculateXpForQuest(currentStats.level, questEntityToProcess.category, questEntityToProcess.duration),
                                 deadline = calculateNewDeadline(currentTime, "daily"),
                             )
-                            questDao.insertQuest(newDailyQuest)
-                            questDao.deleteQuest(questEntity)
+                            questsToAdd.add(newDailyQuest)
+                            questsToDelete.add(questEntityToProcess)
+                            Log.d(WORK_NAME, "DAILY quest '${questEntityToProcess.text}' reset. New quest prepared.")
                         }
-                        "WEEKLY" -> {
-                            // Delete old quest after XP was added/removed and replace with a new one
+                        QuestCategory.WEEKLY -> {
+                            // Delete old weekly quest after XP was added/removed and replace with a new one
                             val newWeeklyQuest = QuestEntity(
                                 id = UUID.randomUUID().toString(),
-                                text = questEntity.text,
+                                text = questEntityToProcess.text,
                                 isDone = false,
                                 hasFailed = false,
-                                category = QuestCategory.DAILY,
+                                category = QuestCategory.WEEKLY,
                                 timeOfCreation = currentTime,
-                                duration = questEntity.duration,
-                                xp = calculateXpForQuest(currentStats.level, questEntity.category, questEntity.duration),
+                                duration = questEntityToProcess.duration,
+                                xp = calculateXpForQuest(currentStats.level, questEntityToProcess.category, questEntityToProcess.duration),
                                 deadline = calculateNewDeadline(currentTime, "weekly"),
                             )
-                            questDao.insertQuest(newWeeklyQuest)
-                            questDao.deleteQuest(questEntity)
+                            questsToAdd.add(newWeeklyQuest)
+                            questsToDelete.add(questEntityToProcess)
+                            Log.d(WORK_NAME, "WEEKLY quest '${questEntityToProcess.text}' reset. New quest prepared.")
+                        }
+                        else -> {
+                            Log.w(WORK_NAME, "Unhandled quest category for reset: ${questEntityToProcess.category} for quest '${questEntityToProcess.text}'")
+                            // Decide if these should just be deleted or ignored for reset
+                            // If they are done/failed and deadline passed, maybe just delete?
+                            if (questEntityToProcess.isDone || questEntityToProcess.hasFailed) {
+                                questsToDelete.add(questEntityToProcess)
+                                Log.d(WORK_NAME, "Generic terminated quest '${questEntityToProcess.text}' with passed deadline added for deletion.")
+                            }
                         }
                     }
                 }
-            Log.d(WORK_NAME, "Daily quest check at midnight.")
+            if (questsToDelete.isNotEmpty() || questsToAdd.isNotEmpty()) {
+                questDao.resetQuests(questsToDelete, questsToAdd)
+                Log.d(WORK_NAME, "DB operations: ${questsToDelete.size} deletes, ${questsToAdd.size} adds.")
+            } else {
+                Log.d(WORK_NAME, "No quests needed processing for deletion or addition.")
+            }
+
+            Log.d(WORK_NAME, "Daily quest check at midnight completed.")
             return Result.success()
         } catch (e: Exception) {
             Log.e(WORK_NAME, "Error during midnight quest check", e)
@@ -96,17 +141,18 @@ class QuestWorker @AssistedInject constructor(
         calendar.timeInMillis = currentTimeMillis // Current time after midnight
 
         // Set to the end of the *current* day (which is the new day for the daily quest)
-        // Effectively, this means the start of the next day in UTC.
         calendar.set(Calendar.HOUR_OF_DAY, 0)
         calendar.set(Calendar.MINUTE, 0)
         calendar.set(Calendar.SECOND, 0)
         calendar.set(Calendar.MILLISECOND, 0)
-        if (flag == "daily") {
-            calendar.add(Calendar.DAY_OF_MONTH, 1) // Deadline is start of the day AFTER the current one
 
-        // flesh out weekly logic more
-        } else if (flag == "weekly") {
-            calendar.add(Calendar.DAY_OF_MONTH, 7) // Deadline is one week from now
+        when (flag) {
+            "daily" -> {
+                calendar.add(Calendar.DAY_OF_MONTH, 1) // Deadline is start of the day AFTER the current one
+            }
+            "weekly" -> {
+                calendar.add(Calendar.DAY_OF_MONTH, 7) // Deadline is one week from now
+            }
         }
         return calendar.timeInMillis
     }

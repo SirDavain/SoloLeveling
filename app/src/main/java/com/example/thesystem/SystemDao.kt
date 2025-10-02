@@ -5,11 +5,17 @@ import androidx.room.Delete
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import androidx.room.Transaction
 import androidx.room.Update
 import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface QuestDao {
+    @Transaction
+    suspend fun resetQuests(questsToDelete: List<QuestEntity>, questsToAdd: List<QuestEntity>) {
+        questsToDelete.forEach { deleteQuest(it) }
+        questsToAdd.forEach { insertQuest(it) }
+    }
     @Query("SELECT * FROM quests ORDER BY category, text ASC")
     fun getAllQuests(): Flow<List<QuestEntity>>
 

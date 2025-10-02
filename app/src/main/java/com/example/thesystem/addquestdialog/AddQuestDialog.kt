@@ -168,6 +168,7 @@ fun AddQuestFullScreenContent(
             QuestDurationWheelPicker(
                 currentHours = currentHours,
                 currentMinutes = currentMinutes,
+                currentCategory = currentQuestCategory,
                 onHoursChanged = onHoursChanged,
                 onMinutesChanged = onMinutesChanged,
             )
