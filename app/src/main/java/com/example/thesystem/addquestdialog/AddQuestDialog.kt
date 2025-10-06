@@ -164,7 +164,9 @@ fun AddQuestFullScreenContent(
             Spacer(Modifier.height(24.dp))
 
             Text("Quest Duration:", style = MaterialTheme.typography.titleMedium)
+
             Spacer(Modifier.height(8.dp))
+
             QuestDurationWheelPicker(
                 currentHours = currentHours,
                 currentMinutes = currentMinutes,

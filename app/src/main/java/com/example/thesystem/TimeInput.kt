@@ -41,13 +41,19 @@ fun QuestDurationWheelPicker(
     onHoursChanged: (hours: Int) -> Unit,
     onMinutesChanged: (minutes: Int) -> Unit,
 ) {
-    // Ensure initialMinutes is a valid value from the range
-    val validCurrentMinutes = remember(currentMinutes) {
-        DURATION_MINUTES_RANGE.find { it == currentMinutes } ?: DURATION_MINUTES_RANGE.first()
-    }
+    var internalHours by remember(currentCategory) { mutableIntStateOf(currentHours) }
+    var internalMinutes by remember(currentCategory) { mutableIntStateOf(currentMinutes) }
 
     val isBossQuest = currentCategory == QuestCategory.BOSS
 
+    LaunchedEffect(isBossQuest) {
+        val newHoursRange = if (isBossQuest) BOSS_DURATION_HOURS_RANGE else DURATION_HOURS_RANGE
+        if (internalHours !in newHoursRange) {
+            val newHours = newHoursRange.first()
+            internalHours = newHours
+            onHoursChanged(newHours)
+        }
+    }
 
     Row(
         modifier = modifier.fillMaxWidth(),
@@ -57,8 +63,11 @@ fun QuestDurationWheelPicker(
         ScrollablePickerColumn(
             modifier = Modifier.weight(1f),
             items = if (isBossQuest) BOSS_DURATION_HOURS_RANGE else DURATION_HOURS_RANGE,
-            currentValue = currentHours,
-            onValueSelected = onHoursChanged,
+            currentValue = internalHours,
+            onValueSelected = { newHours ->
+                internalHours = newHours
+                onHoursChanged(newHours)
+            },
             label = "Hours"
         )
         Text(
@@ -69,8 +78,11 @@ fun QuestDurationWheelPicker(
         ScrollablePickerColumn(
             modifier = Modifier.weight(1f),
             items = DURATION_MINUTES_RANGE,
-            currentValue = validCurrentMinutes,
-            onValueSelected = onMinutesChanged,
+            currentValue = internalMinutes,
+            onValueSelected = { newMinutes ->
+                internalMinutes = newMinutes
+                onMinutesChanged(newMinutes)
+            },
             label = "Minutes"
         )
     }
@@ -86,12 +98,27 @@ fun QuestDurationWheelPickerPreview() {
             // For preview, manage state locally
             var hours by remember { mutableIntStateOf(1) }
             var minutes by remember { mutableIntStateOf(30) }
+            var category by remember { mutableStateOf(QuestCategory.ONE_TIME) }
 
             Column {
+                Button(onClick = {
+                    category = if (category == QuestCategory.BOSS) QuestCategory.ONE_TIME else QuestCategory.BOSS
+                    // When switching to BOSS, if the current hours are invalid, they should adjust.
+                    val newRange = if (category == QuestCategory.BOSS) BOSS_DURATION_HOURS_RANGE else DURATION_HOURS_RANGE
+                    if (hours !in newRange) {
+                        hours = newRange.first()
+                    }
+                }) {
+                    Text(text = "Toggle BOSS Category")
+                }
+                Spacer(Modifier.height(8.dp))
+                Text("Current Category: ${category.name}")
+                Spacer(Modifier.height(16.dp))
+
                 QuestDurationWheelPicker(
                     currentHours = hours,
                     currentMinutes = minutes,
-                    currentCategory = QuestCategory.ONE_TIME,
+                    currentCategory = category,
                     onHoursChanged = { h -> hours = h },
                     onMinutesChanged = { m -> minutes = m }
                 )

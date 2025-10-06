@@ -82,7 +82,8 @@ fun QuestLogScreen(
                             if (!questsInCategory.isNullOrEmpty()) {
                                 item {
                                     Text(
-                                        text = category.name.replace("_", " ").capitalizeWords(),
+                                        // text = category.name.replace("_", " ").capitalizeWords(),
+                                        text = category.category,
                                         style = MaterialTheme.typography.titleMedium,
                                         modifier = Modifier.padding(top = 16.dp, bottom = 8.dp)
                                     )
